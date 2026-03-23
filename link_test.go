@@ -68,6 +68,15 @@ func TestCmdLink_HappyPath(t *testing.T) {
 		t.Errorf(".repo content: got %q, want %q", strings.TrimSpace(string(data)), actualRemote)
 	}
 
+	pathFile := filepath.Join(dotmemDir, "my-app", ".path")
+	pathData, err := os.ReadFile(pathFile)
+	if err != nil {
+		t.Fatalf("missing .path file: %v", err)
+	}
+	if strings.TrimSpace(string(pathData)) != repoDir {
+		t.Errorf(".path content: got %q, want %q", strings.TrimSpace(string(pathData)), repoDir)
+	}
+
 	log, err := gitExec(dotmemDir, "log", "--oneline")
 	if err != nil {
 		t.Fatal(err)

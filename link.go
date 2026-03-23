@@ -58,6 +58,11 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	projectDir := filepath.Join(dir, slug)
 	repoFile := filepath.Join(projectDir, ".repo")
 
+	canonical, err := mainWorktree(toplevel)
+	if err != nil {
+		canonical = toplevel
+	}
+
 	if _, err := os.Stat(projectDir); err == nil {
 		existing, err := os.ReadFile(repoFile)
 		if err == nil {
@@ -79,6 +84,11 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 		if _, err := gitExec(dir, "commit", "-m", fmt.Sprintf("link: add %s", slug)); err != nil {
 			return err
 		}
+	}
+
+	pathFile := filepath.Join(projectDir, ".path")
+	if err := os.WriteFile(pathFile, []byte(canonical+"\n"), 0644); err != nil {
+		return err
 	}
 
 	claudeDir := filepath.Join(toplevel, ".claude")

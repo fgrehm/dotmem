@@ -26,6 +26,50 @@ func dotmemDir() (string, error) {
 	return filepath.Join(home, ".mem"), nil
 }
 
+func mainWorktree(repoDir string) (string, error) {
+	out, err := gitExec(repoDir, "worktree", "list", "--porcelain")
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "worktree ") {
+			return strings.TrimPrefix(line, "worktree "), nil
+		}
+	}
+	return "", fmt.Errorf("could not determine main worktree")
+}
+
+func resolveSlug(dotmemDir string) (string, error) {
+	toplevel, err := gitExec(".", "rev-parse", "--show-toplevel")
+	if err != nil {
+		return "", fmt.Errorf("not a git repository")
+	}
+
+	canonical, err := mainWorktree(toplevel)
+	if err != nil {
+		canonical = toplevel
+	}
+
+	entries, err := os.ReadDir(dotmemDir)
+	if err != nil {
+		return "", err
+	}
+	for _, e := range entries {
+		if !e.IsDir() || e.Name() == ".git" {
+			continue
+		}
+		pathFile := filepath.Join(dotmemDir, e.Name(), ".path")
+		data, err := os.ReadFile(pathFile)
+		if err != nil {
+			continue
+		}
+		if strings.TrimSpace(string(data)) == canonical {
+			return e.Name(), nil
+		}
+	}
+	return "", fmt.Errorf("no linked project found for %s. Run \"dotmem link\" first.", canonical)
+}
+
 func gitExec(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir

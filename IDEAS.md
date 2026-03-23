@@ -13,9 +13,9 @@ Future directions for dotmem. Nothing here is committed to, just things worth ex
 
 ## More commands
 
-- `dotmem push` -- auto-push to remote on a schedule or post-commit
-- `dotmem diff` -- show what changed in memory across sessions
-- `dotmem unlink` / `dotmem uninstall-hook` -- teardown commands
+- ~~`dotmem push`~~ -- done (manual push; auto-push on schedule could come later)
+- ~~`dotmem diff`~~ -- done as `dotmem log <slug>` (git log filtered to project)
+- ~~`dotmem unlink` / `dotmem uninstall-hook`~~ -- done
 - `dotmem repair` -- fix `.repo` URLs after GitHub repo renames/transfers (currently manual edit)
 - **Import detection** -- detect when Claude Code has written memories to the default `~/.claude/` path (outside dotmem) and offer to import them
 
@@ -36,5 +36,5 @@ Future directions for dotmem. Nothing here is committed to, just things worth ex
 
 ## Hardening
 
-- **Claude CLI version check** -- `dotmem compact` could check `claude --version` and fail early if below minimum (tested against 2.1.78+)
+- ~~**Claude CLI version check**~~ -- done (minimum 2.1.78)
 - **Compact recovery docs** -- document that `git checkout -- .` in `~/.mem` recovers from a bad compact

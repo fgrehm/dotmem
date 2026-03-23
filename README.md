@@ -105,10 +105,15 @@ don't commit machine-specific paths.
 |---|---|
 | `dotmem init` | Create the central memory repo at `~/.mem` |
 | `dotmem link [slug]` | Link the current project (derives slug from dir name if omitted, `-y` to skip prompts) |
+| `dotmem unlink` | Remove the memory link for the current project |
 | `dotmem commit` | Auto-commit changed memory files (always exits 0, silent by default) |
-| `dotmem compact <slug>` | Merge memory files into a single MEMORY.md via Claude (requires `claude` CLI; `-m` model, `-e` effort, `-y` skip prompt) |
+| `dotmem compact [slug]` | Merge memory files into a single MEMORY.md via Claude (requires `claude` CLI; `-m` model, `-e` effort, `-y` skip prompt) |
 | `dotmem install-hook` | Register the Stop hook in `~/.claude/settings.json` |
-| `dotmem status` | List linked projects with last-modified dates |
+| `dotmem uninstall-hook` | Remove the Stop hook from `~/.claude/settings.json` |
+| `dotmem ls` | List linked projects with last-modified dates |
+| `dotmem log [slug]` | Show memory change history for a project |
+| `dotmem push` | Push the memory repo to its remote |
+| `dotmem cd [slug]` | Open a subshell in a project or memory directory |
 
 Set `DOTMEM_DIR` to an absolute path to override the default `~/.mem` location.
 If you use a custom `DOTMEM_DIR`, make sure it's set in your shell profile so the
@@ -166,8 +171,8 @@ with the new URL and re-run `dotmem link`.
 
 To stop using dotmem:
 
-1. Remove `autoMemoryDirectory` from each project's `.claude/settings.local.json`
-2. Remove the `dotmem commit` Stop hook from `~/.claude/settings.json`
+1. Run `dotmem unlink` inside each linked project
+2. Run `dotmem uninstall-hook` to remove the Stop hook
 3. Optionally delete `~/.mem/` (or keep it as a read-only archive)
 
 ## Alternatives
