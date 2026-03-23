@@ -145,6 +145,47 @@ func TestWriteJSONSettings(t *testing.T) {
 	}
 }
 
+func TestEnsureGitignoreRule(t *testing.T) {
+	t.Run("creates file with rule", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		data, _ := os.ReadFile(path)
+		if !strings.Contains(string(data), "**/.path") {
+			t.Error("expected rule in new file")
+		}
+	})
+
+	t.Run("appends to existing file", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		os.WriteFile(path, []byte(".DS_Store\n"), 0644)
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		data, _ := os.ReadFile(path)
+		if !strings.Contains(string(data), ".DS_Store") {
+			t.Error("existing rule lost")
+		}
+		if !strings.Contains(string(data), "**/.path") {
+			t.Error("new rule not appended")
+		}
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		os.WriteFile(path, []byte("**/.path\n"), 0644)
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		data, _ := os.ReadFile(path)
+		count := strings.Count(string(data), "**/.path")
+		if count != 1 {
+			t.Errorf("expected rule exactly once, got %d", count)
+		}
+	})
+}
+
 func TestValidateSlug(t *testing.T) {
 	tests := []struct {
 		slug    string

@@ -89,6 +89,9 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	if err := os.WriteFile(pathFile, []byte(canonical+"\n"), 0644); err != nil {
 		return err
 	}
+	if err := ensureGitignoreRule(filepath.Join(dir, ".gitignore"), "**/.path"); err != nil {
+		return err
+	}
 
 	claudeDir := filepath.Join(toplevel, ".claude")
 	if err := os.MkdirAll(claudeDir, 0755); err != nil {

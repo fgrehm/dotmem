@@ -117,6 +117,41 @@ func TestCmdUninstallHook_PreservesOtherHooks(t *testing.T) {
 	}
 }
 
+func TestCmdUninstallHook_PreservesUnrecognizedHooksShape(t *testing.T) {
+	home := fakeHome(t)
+	putDotmemOnPath(t)
+
+	// Write a Stop hook entry with a non-[]any "hooks" field.
+	claudeDir := filepath.Join(home, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	raw := `{"hooks":{"Stop":[{"matcher":"","hooks":"not-an-array"},{"matcher":"","hooks":[{"type":"command","command":"dotmem commit"}]}]}}`
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(raw), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := cmdUninstallHook(&buf); err != nil {
+		t.Fatalf("uninstall: %v", err)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	var settings map[string]any
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	hooks := settings["hooks"].(map[string]any)
+	stopHooks := hooks["Stop"].([]any)
+	if len(stopHooks) != 1 {
+		t.Errorf("expected 1 remaining stop entry (the unrecognized one), got %d", len(stopHooks))
+	}
+	entry := stopHooks[0].(map[string]any)
+	if entry["hooks"] != "not-an-array" {
+		t.Error("unrecognized hooks shape should be preserved unchanged")
+	}
+}
+
 func TestCmdUninstallHook_Idempotent(t *testing.T) {
 	home := fakeHome(t)
 	putDotmemOnPath(t)

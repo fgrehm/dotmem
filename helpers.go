@@ -107,6 +107,27 @@ func gitExec(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// ensureGitignoreRule appends rule to path if it is not already present.
+// Creates the file if it does not exist.
+func ensureGitignoreRule(path, rule string) error {
+	data, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == rule {
+			return nil
+		}
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = fmt.Fprintln(f, rule)
+	return err
+}
+
 func confirmPrompt(w io.Writer, r io.Reader, prompt string) error {
 	if !isTerminal(r) {
 		return fmt.Errorf("aborted (non-interactive)")

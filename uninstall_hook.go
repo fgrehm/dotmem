@@ -53,7 +53,12 @@ func cmdUninstallHook(w io.Writer) error {
 			filtered = append(filtered, entry)
 			continue
 		}
-		innerHooks, _ := entryMap["hooks"].([]any)
+		innerHooks, ok := entryMap["hooks"].([]any)
+		if !ok {
+			// Unrecognized or missing "hooks" field: preserve entry unchanged.
+			filtered = append(filtered, entry)
+			continue
+		}
 		var kept []any
 		for _, h := range innerHooks {
 			hMap, ok := h.(map[string]any)

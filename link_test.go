@@ -395,6 +395,30 @@ func TestCmdLink_DerivedSlug(t *testing.T) {
 	}
 }
 
+func TestCmdLink_EnsuresPathGitignore(t *testing.T) {
+	setupGitEnv(t)
+	dotmemDir := initDotmem(t)
+	repoDir := makeTempRepo(t, t.TempDir())
+	chdirTo(t, repoDir)
+
+	// Simulate a legacy dotmem repo without the **/.path rule.
+	gitignorePath := filepath.Join(dotmemDir, ".gitignore")
+	os.WriteFile(gitignorePath, []byte(".DS_Store\n"), 0644)
+
+	var buf bytes.Buffer
+	if err := cmdLink(&buf, strings.NewReader(""), "myapp", false); err != nil {
+		t.Fatalf("link: %v", err)
+	}
+
+	data, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "**/.path") {
+		t.Error("expected **/.path to be added to .gitignore for backwards compat")
+	}
+}
+
 func TestCmdLink_SlugNormalization(t *testing.T) {
 	tests := []struct {
 		input string
