@@ -47,13 +47,16 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 
 	remoteURL, err := gitExec(toplevel, "remote", "get-url", "origin")
 	if err != nil {
-		return fmt.Errorf("no remote origin found. dotmem link requires a git remote named \"origin\".")
+		return fmt.Errorf("no remote origin found; dotmem link requires a git remote named \"origin\"")
 	}
 
 	if slug == "" {
 		slug = filepath.Base(toplevel)
 	}
 	slug = normalizeSlug(slug)
+	if err := validateSlug(slug); err != nil {
+		return err
+	}
 
 	projectDir := filepath.Join(dir, slug)
 	repoFile := filepath.Join(projectDir, repoMarker)

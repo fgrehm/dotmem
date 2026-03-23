@@ -76,6 +76,8 @@ func cmdCompact(ctx context.Context, w io.Writer, r io.Reader, slug string, forc
 			return err
 		}
 		slug = resolved
+	} else if err := validateSlug(slug); err != nil {
+		return err
 	}
 
 	projectDir := filepath.Join(dir, slug)
@@ -98,7 +100,7 @@ func cmdCompact(ctx context.Context, w io.Writer, r io.Reader, slug string, forc
 	}
 
 	if _, err := exec.LookPath("claude"); err != nil {
-		return fmt.Errorf("\"claude\" not found on PATH. Install Claude Code first.")
+		return fmt.Errorf("\"claude\" not found on PATH; install Claude Code first")
 	}
 	if err := checkClaudeVersion(); err != nil {
 		return err
@@ -357,7 +359,7 @@ func checkClaudeVersion() error {
 	if ver[0] < minClaudeVersion[0] ||
 		(ver[0] == minClaudeVersion[0] && ver[1] < minClaudeVersion[1]) ||
 		(ver[0] == minClaudeVersion[0] && ver[1] == minClaudeVersion[1] && ver[2] < minClaudeVersion[2]) {
-		return fmt.Errorf("claude %s is too old. dotmem compact requires %d.%d.%d or later.",
+		return fmt.Errorf("claude %s is too old; dotmem compact requires %d.%d.%d or later",
 			versionStr, minClaudeVersion[0], minClaudeVersion[1], minClaudeVersion[2])
 	}
 	return nil

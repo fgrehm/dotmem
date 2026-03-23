@@ -144,3 +144,24 @@ func TestWriteJSONSettings(t *testing.T) {
 		t.Error("expected trailing newline")
 	}
 }
+
+func TestValidateSlug(t *testing.T) {
+	tests := []struct {
+		slug    string
+		wantErr bool
+	}{
+		{"myapp", false},
+		{"my-app", false},
+		{"", true},
+		{".", true},
+		{"..", true},
+		{"../evil", true},
+		{"a/b", true},
+	}
+	for _, tt := range tests {
+		err := validateSlug(tt.slug)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("validateSlug(%q): err=%v, wantErr=%v", tt.slug, err, tt.wantErr)
+		}
+	}
+}

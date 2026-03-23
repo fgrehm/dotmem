@@ -39,7 +39,7 @@ this to redirect auto memory into the central repo.
 
 ```json
 {
-  "autoMemoryDirectory": "/home/you/.dotmem/my-app"
+  "autoMemoryDirectory": "/home/you/.mem/my-app"
 }
 ```
 

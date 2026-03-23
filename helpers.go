@@ -19,7 +19,15 @@ const (
 
 func requireInit(dir string) error {
 	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+		return fmt.Errorf("not initialized; run \"dotmem init\" first")
+	}
+	return nil
+}
+
+func validateSlug(slug string) error {
+	if slug == "" || slug == "." || slug == ".." ||
+		strings.ContainsAny(slug, "/\\") {
+		return fmt.Errorf("invalid project slug %q", slug)
 	}
 	return nil
 }
@@ -82,7 +90,7 @@ func resolveSlug(dotmemDir string) (string, error) {
 			return e.Name(), nil
 		}
 	}
-	return "", fmt.Errorf("no linked project found for %s. Run \"dotmem link\" first.", canonical)
+	return "", fmt.Errorf("no linked project found for %s; run \"dotmem link\" first", canonical)
 }
 
 func gitExec(dir string, args ...string) (string, error) {

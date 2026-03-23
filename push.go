@@ -28,7 +28,7 @@ func cmdPush(w io.Writer) error {
 	}
 
 	if _, err := gitExec(dir, "remote", "get-url", "origin"); err != nil {
-		return fmt.Errorf("no remote configured. Run \"git -C %s remote add origin <url>\" first.", dir)
+		return fmt.Errorf("no remote configured; run \"git -C %s remote add origin <url>\" first", dir)
 	}
 
 	if _, err := gitExec(dir, "push", "-u", "origin", "HEAD"); err != nil {

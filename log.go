@@ -42,6 +42,8 @@ func cmdLog(w io.Writer, slug string) error {
 			return err
 		}
 		slug = resolved
+	} else if err := validateSlug(slug); err != nil {
+		return err
 	}
 
 	projectDir := filepath.Join(dir, slug)

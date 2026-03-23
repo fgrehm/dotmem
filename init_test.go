@@ -35,6 +35,14 @@ func TestCmdInit_HappyPath(t *testing.T) {
 	if !strings.Contains(log, "init: create dotmem repo") {
 		t.Errorf("expected init commit, got: %s", log)
 	}
+
+	gitignore, err := os.ReadFile(filepath.Join(dir, ".gitignore"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(gitignore), ".path") {
+		t.Error("expected .path in .gitignore")
+	}
 }
 
 func TestCmdInit_AlreadyExists(t *testing.T) {

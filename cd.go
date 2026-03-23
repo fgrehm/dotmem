@@ -39,6 +39,9 @@ func cmdCd(slug string) error {
 
 	target := dir
 	if slug != "" {
+		if err := validateSlug(slug); err != nil {
+			return err
+		}
 		projectDir := filepath.Join(dir, slug)
 		pathFile := filepath.Join(projectDir, pathMarker)
 		data, err := os.ReadFile(pathFile)

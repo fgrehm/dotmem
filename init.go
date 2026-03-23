@@ -34,7 +34,7 @@ func cmdInit(w io.Writer) error {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".DS_Store\n*.swp\n*~\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".DS_Store\n*.swp\n*~\n**/.path\n"), 0644); err != nil {
 		return err
 	}
 

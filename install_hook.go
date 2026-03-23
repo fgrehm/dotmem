@@ -24,7 +24,7 @@ session. The hook is added to ~/.claude/settings.json. Idempotent.`,
 
 func cmdInstallHook(w io.Writer) error {
 	if _, err := exec.LookPath("dotmem"); err != nil {
-		return fmt.Errorf("\"dotmem\" not found on PATH. Install it first or add its location to your PATH.")
+		return fmt.Errorf("\"dotmem\" not found on PATH; install it first or add its location to your PATH")
 	}
 
 	home, err := os.UserHomeDir()
