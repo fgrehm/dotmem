@@ -357,9 +357,14 @@ func TestCmdLink_OverwriteForce(t *testing.T) {
 		t.Fatalf("expected success with -y, got %v", err)
 	}
 
-	raw, _ := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
+	raw, err := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json: %v", err)
+	}
 	var settings map[string]any
-	json.Unmarshal(raw, &settings)
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		t.Fatalf("failed to unmarshal settings.local.json: %v (raw: %s)", err, string(raw))
+	}
 	want := filepath.Join(dotmemDir, "myapp")
 	if settings["autoMemoryDirectory"] != want {
 		t.Errorf("autoMemoryDirectory not updated: got %v, want %q", settings["autoMemoryDirectory"], want)

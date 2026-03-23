@@ -53,8 +53,15 @@ func cmdCd(slug string) error {
 			return err
 		}
 		target = strings.TrimSpace(string(data))
-		if _, err := os.Stat(target); err != nil {
-			return fmt.Errorf("project path %s no longer exists", target)
+		info, err := os.Stat(target)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("project path %s no longer exists", target)
+			}
+			return fmt.Errorf("failed to stat project path %s: %w", target, err)
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("project path %s is not a directory", target)
 		}
 	}
 

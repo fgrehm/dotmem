@@ -69,7 +69,7 @@ func mainWorktree(repoDir string) string {
 func resolveSlug(dotmemDir string) (string, error) {
 	toplevel, err := gitExec(".", "rev-parse", "--show-toplevel")
 	if err != nil {
-		return "", fmt.Errorf("not a git repository")
+		return "", fmt.Errorf("not a git repository: %w", err)
 	}
 
 	canonical := mainWorktree(toplevel)

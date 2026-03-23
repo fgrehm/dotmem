@@ -66,7 +66,7 @@ func cmdUninstallHook(w io.Writer) error {
 				kept = append(kept, h)
 				continue
 			}
-			if hMap["command"] == hookCommand {
+			if hMap["type"] == "command" && hMap["command"] == hookCommand {
 				found = true
 				continue
 			}

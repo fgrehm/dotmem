@@ -139,20 +139,31 @@ func TestWriteJSONSettings(t *testing.T) {
 	}
 
 	// Verify trailing newline.
-	data, _ := os.ReadFile(path)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
 	if !strings.HasSuffix(string(data), "\n") {
 		t.Error("expected trailing newline")
 	}
 }
 
 func TestEnsureGitignoreRule(t *testing.T) {
+	readFile := func(t *testing.T, path string) string {
+		t.Helper()
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", path, err)
+		}
+		return string(data)
+	}
+
 	t.Run("creates file with rule", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
 			t.Fatal(err)
 		}
-		data, _ := os.ReadFile(path)
-		if !strings.Contains(string(data), "**/.path") {
+		if !strings.Contains(readFile(t, path), "**/.path") {
 			t.Error("expected rule in new file")
 		}
 	})
@@ -163,11 +174,11 @@ func TestEnsureGitignoreRule(t *testing.T) {
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
 			t.Fatal(err)
 		}
-		data, _ := os.ReadFile(path)
-		if !strings.Contains(string(data), ".DS_Store") {
+		got := readFile(t, path)
+		if !strings.Contains(got, ".DS_Store") {
 			t.Error("existing rule lost")
 		}
-		if !strings.Contains(string(data), "**/.path") {
+		if !strings.Contains(got, "**/.path") {
 			t.Error("new rule not appended")
 		}
 	})
@@ -178,12 +189,12 @@ func TestEnsureGitignoreRule(t *testing.T) {
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
 			t.Fatal(err)
 		}
-		data, _ := os.ReadFile(path)
+		got := readFile(t, path)
 		// Both rules must appear on separate lines.
-		if !strings.Contains(string(data), ".DS_Store\n") {
-			t.Errorf("trailing newline not inserted before new rule: %q", string(data))
+		if !strings.Contains(got, ".DS_Store\n") {
+			t.Errorf("trailing newline not inserted before new rule: %q", got)
 		}
-		if !strings.Contains(string(data), "**/.path") {
+		if !strings.Contains(got, "**/.path") {
 			t.Error("new rule not appended")
 		}
 	})
@@ -194,8 +205,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
 			t.Fatal(err)
 		}
-		data, _ := os.ReadFile(path)
-		count := strings.Count(string(data), "**/.path")
+		count := strings.Count(readFile(t, path), "**/.path")
 		if count != 1 {
 			t.Errorf("expected rule exactly once, got %d", count)
 		}

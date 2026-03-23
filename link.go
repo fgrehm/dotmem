@@ -42,7 +42,7 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 
 	toplevel, err := gitExec(".", "rev-parse", "--show-toplevel")
 	if err != nil {
-		return fmt.Errorf("not a git repository")
+		return fmt.Errorf("not a git repository: %w", err)
 	}
 
 	remoteURL, err := gitExec(toplevel, "remote", "get-url", "origin")

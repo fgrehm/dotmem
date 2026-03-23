@@ -24,7 +24,7 @@ for the current project. Does not delete memory files from the central repo.`,
 func cmdUnlink(w io.Writer) error {
 	toplevel, err := gitExec(".", "rev-parse", "--show-toplevel")
 	if err != nil {
-		return fmt.Errorf("not a git repository")
+		return fmt.Errorf("not a git repository: %w", err)
 	}
 
 	settingsPath := filepath.Join(toplevel, ".claude", "settings.local.json")
