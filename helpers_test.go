@@ -157,7 +157,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 		}
 	})
 
-	t.Run("appends to existing file", func(t *testing.T) {
+	t.Run("appends to existing file with trailing newline", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
 		os.WriteFile(path, []byte(".DS_Store\n"), 0644)
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
@@ -166,6 +166,22 @@ func TestEnsureGitignoreRule(t *testing.T) {
 		data, _ := os.ReadFile(path)
 		if !strings.Contains(string(data), ".DS_Store") {
 			t.Error("existing rule lost")
+		}
+		if !strings.Contains(string(data), "**/.path") {
+			t.Error("new rule not appended")
+		}
+	})
+
+	t.Run("appends to file without trailing newline", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		os.WriteFile(path, []byte(".DS_Store"), 0644) // no trailing newline
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		data, _ := os.ReadFile(path)
+		// Both rules must appear on separate lines.
+		if !strings.Contains(string(data), ".DS_Store\n") {
+			t.Errorf("trailing newline not inserted before new rule: %q", string(data))
 		}
 		if !strings.Contains(string(data), "**/.path") {
 			t.Error("new rule not appended")

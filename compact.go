@@ -76,8 +76,11 @@ func cmdCompact(ctx context.Context, w io.Writer, r io.Reader, slug string, forc
 			return err
 		}
 		slug = resolved
-	} else if err := validateSlug(slug); err != nil {
-		return err
+	} else {
+		slug = normalizeSlug(slug)
+		if err := validateSlug(slug); err != nil {
+			return err
+		}
 	}
 
 	projectDir := filepath.Join(dir, slug)

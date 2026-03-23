@@ -124,6 +124,12 @@ func ensureGitignoreRule(path, rule string) error {
 		return err
 	}
 	defer f.Close()
+	// Ensure there is a trailing newline before appending a new rule.
+	if len(data) > 0 && data[len(data)-1] != '\n' {
+		if _, err := f.Write([]byte("\n")); err != nil {
+			return err
+		}
+	}
 	_, err = fmt.Fprintln(f, rule)
 	return err
 }

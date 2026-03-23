@@ -26,9 +26,14 @@ func TestCmdUninstallHook_HappyPath(t *testing.T) {
 		t.Errorf("expected 'hook removed', got %q", buf.String())
 	}
 
-	raw, _ := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	raw, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
 	var settings map[string]any
-	json.Unmarshal(raw, &settings)
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		t.Fatalf("failed to unmarshal settings.json: %v (raw: %s)", err, string(raw))
+	}
 	if _, ok := settings["hooks"]; ok {
 		t.Errorf("hooks key should have been removed when empty, got %s", string(raw))
 	}
@@ -68,9 +73,14 @@ func TestCmdUninstallHook_PreservesOtherSettings(t *testing.T) {
 		t.Fatalf("uninstall: %v", err)
 	}
 
-	raw, _ := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	raw, err := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
 	var settings map[string]any
-	json.Unmarshal(raw, &settings)
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		t.Fatalf("failed to unmarshal settings.json: %v (raw: %s)", err, string(raw))
+	}
 	if settings["theme"] != "dark" {
 		t.Error("other settings should be preserved")
 	}
@@ -107,9 +117,14 @@ func TestCmdUninstallHook_PreservesOtherHooks(t *testing.T) {
 		t.Fatalf("uninstall: %v", err)
 	}
 
-	raw, _ := os.ReadFile(settingsPath)
+	raw, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
 	var after map[string]any
-	json.Unmarshal(raw, &after)
+	if err := json.Unmarshal(raw, &after); err != nil {
+		t.Fatalf("failed to unmarshal settings.json: %v (raw: %s)", err, string(raw))
+	}
 	afterHooks := after["hooks"].(map[string]any)
 	afterStop := afterHooks["Stop"].([]any)
 	if len(afterStop) != 1 {
@@ -136,10 +151,13 @@ func TestCmdUninstallHook_PreservesUnrecognizedHooksShape(t *testing.T) {
 		t.Fatalf("uninstall: %v", err)
 	}
 
-	data, _ := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	data, err := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
 	var settings map[string]any
 	if err := json.Unmarshal(data, &settings); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
+		t.Fatalf("invalid JSON: %v (raw: %s)", err, string(data))
 	}
 	hooks := settings["hooks"].(map[string]any)
 	stopHooks := hooks["Stop"].([]any)
@@ -175,7 +193,10 @@ func TestCmdUninstallHook_Idempotent(t *testing.T) {
 	}
 
 	// Verify settings.json still valid.
-	raw, _ := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	raw, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
 	var settings map[string]any
 	if err := json.Unmarshal(raw, &settings); err != nil {
 		t.Fatalf("invalid JSON after double uninstall: %v", err)

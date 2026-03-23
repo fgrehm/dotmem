@@ -39,6 +39,7 @@ func cmdCd(slug string) error {
 
 	target := dir
 	if slug != "" {
+		slug = normalizeSlug(slug)
 		if err := validateSlug(slug); err != nil {
 			return err
 		}
