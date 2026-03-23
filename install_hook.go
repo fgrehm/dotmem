@@ -51,7 +51,6 @@ func cmdInstallHook(w io.Writer) error {
 
 	stopHooks, _ := hooks["Stop"].([]any)
 
-	hookCommand := "dotmem commit"
 	for _, entry := range stopHooks {
 		entryMap, ok := entry.(map[string]any)
 		if !ok {

@@ -11,6 +11,23 @@ import (
 	"strings"
 )
 
+const (
+	repoMarker  = ".repo"
+	pathMarker  = ".path"
+	hookCommand = "dotmem commit"
+)
+
+func requireInit(dir string) error {
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
+		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	}
+	return nil
+}
+
+func isMetaFile(name string) bool {
+	return name == repoMarker || name == pathMarker
+}
+
 func dotmemDir() (string, error) {
 	dir := os.Getenv("DOTMEM_DIR")
 	if dir != "" {
@@ -26,17 +43,19 @@ func dotmemDir() (string, error) {
 	return filepath.Join(home, ".mem"), nil
 }
 
-func mainWorktree(repoDir string) (string, error) {
+// mainWorktree returns the canonical (main) worktree path for a repo.
+// Falls back to repoDir if git worktree list fails or returns no result.
+func mainWorktree(repoDir string) string {
 	out, err := gitExec(repoDir, "worktree", "list", "--porcelain")
 	if err != nil {
-		return "", err
+		return repoDir
 	}
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, "worktree ") {
-			return strings.TrimPrefix(line, "worktree "), nil
+			return strings.TrimPrefix(line, "worktree ")
 		}
 	}
-	return "", fmt.Errorf("could not determine main worktree")
+	return repoDir
 }
 
 func resolveSlug(dotmemDir string) (string, error) {
@@ -45,10 +64,7 @@ func resolveSlug(dotmemDir string) (string, error) {
 		return "", fmt.Errorf("not a git repository")
 	}
 
-	canonical, err := mainWorktree(toplevel)
-	if err != nil {
-		canonical = toplevel
-	}
+	canonical := mainWorktree(toplevel)
 
 	entries, err := os.ReadDir(dotmemDir)
 	if err != nil {
@@ -58,8 +74,7 @@ func resolveSlug(dotmemDir string) (string, error) {
 		if !e.IsDir() || e.Name() == ".git" {
 			continue
 		}
-		pathFile := filepath.Join(dotmemDir, e.Name(), ".path")
-		data, err := os.ReadFile(pathFile)
+		data, err := os.ReadFile(filepath.Join(dotmemDir, e.Name(), pathMarker))
 		if err != nil {
 			continue
 		}

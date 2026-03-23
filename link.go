@@ -36,8 +36,8 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	if err := requireInit(dir); err != nil {
+		return err
 	}
 
 	toplevel, err := gitExec(".", "rev-parse", "--show-toplevel")
@@ -56,12 +56,8 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	slug = normalizeSlug(slug)
 
 	projectDir := filepath.Join(dir, slug)
-	repoFile := filepath.Join(projectDir, ".repo")
-
-	canonical, err := mainWorktree(toplevel)
-	if err != nil {
-		canonical = toplevel
-	}
+	repoFile := filepath.Join(projectDir, repoMarker)
+	canonical := mainWorktree(toplevel)
 
 	if _, err := os.Stat(projectDir); err == nil {
 		existing, err := os.ReadFile(repoFile)
@@ -86,7 +82,7 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 		}
 	}
 
-	pathFile := filepath.Join(projectDir, ".path")
+	pathFile := filepath.Join(projectDir, pathMarker)
 	if err := os.WriteFile(pathFile, []byte(canonical+"\n"), 0644); err != nil {
 		return err
 	}

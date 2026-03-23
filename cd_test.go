@@ -59,6 +59,17 @@ func TestCmdCd_MemoryRepo(t *testing.T) {
 	}
 }
 
+func TestCmdCd_SubshellExitCode(t *testing.T) {
+	setupGitEnv(t)
+	initDotmem(t)
+
+	// A shell that exits non-zero should not cause dotmem to report an error.
+	t.Setenv("SHELL", "/bin/false")
+	if err := cmdCd(""); err != nil {
+		t.Fatalf("subshell exit code should be ignored, got %v", err)
+	}
+}
+
 func TestCmdCd_ProjectDir(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)

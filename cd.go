@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,14 +33,14 @@ func cmdCd(slug string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	if err := requireInit(dir); err != nil {
+		return err
 	}
 
 	target := dir
 	if slug != "" {
 		projectDir := filepath.Join(dir, slug)
-		pathFile := filepath.Join(projectDir, ".path")
+		pathFile := filepath.Join(projectDir, pathMarker)
 		data, err := os.ReadFile(pathFile)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -63,5 +64,11 @@ func cmdCd(slug string) error {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	err = cmd.Run()
+	// Ignore subshell exit codes (user's business, not ours).
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return nil
+	}
+	return err
 }

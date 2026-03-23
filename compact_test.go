@@ -290,6 +290,54 @@ func TestCmdCompact_OldClaudeVersion(t *testing.T) {
 	}
 }
 
+func TestCmdCompact_EmptyClaudeVersion(t *testing.T) {
+	setupGitEnv(t)
+	dotmemDir := initDotmem(t)
+	projectDir := filepath.Join(dotmemDir, "myapp")
+	os.MkdirAll(projectDir, 0755)
+	os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644)
+	os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644)
+
+	binDir := t.TempDir()
+	fake := filepath.Join(binDir, "claude")
+	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"\"; exit 0; fi\n"
+	os.WriteFile(fake, []byte(script), 0755)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	var buf bytes.Buffer
+	err := cmdCompact(context.Background(), &buf, strings.NewReader(""), "myapp", true, "", "")
+	if err == nil {
+		t.Fatal("expected error for empty version")
+	}
+	if !strings.Contains(err.Error(), "unexpected claude version") {
+		t.Errorf("expected 'unexpected claude version' error, got %q", err.Error())
+	}
+}
+
+func TestCmdCompact_MalformedClaudeVersion(t *testing.T) {
+	setupGitEnv(t)
+	dotmemDir := initDotmem(t)
+	projectDir := filepath.Join(dotmemDir, "myapp")
+	os.MkdirAll(projectDir, 0755)
+	os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644)
+	os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644)
+
+	binDir := t.TempDir()
+	fake := filepath.Join(binDir, "claude")
+	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"not-a-version\"; exit 0; fi\n"
+	os.WriteFile(fake, []byte(script), 0755)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	var buf bytes.Buffer
+	err := cmdCompact(context.Background(), &buf, strings.NewReader(""), "myapp", true, "", "")
+	if err == nil {
+		t.Fatal("expected error for malformed version")
+	}
+	if !strings.Contains(err.Error(), "unexpected claude version") {
+		t.Errorf("expected 'unexpected claude version' error, got %q", err.Error())
+	}
+}
+
 func TestReadMemoryFiles(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "MEMORY.md"), []byte("memory\n"), 0644)

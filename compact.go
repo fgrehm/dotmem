@@ -66,8 +66,8 @@ func cmdCompact(ctx context.Context, w io.Writer, r io.Reader, slug string, forc
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	if err := requireInit(dir); err != nil {
+		return err
 	}
 
 	if slug == "" {
@@ -186,7 +186,7 @@ func readMemoryFiles(dir string) (map[string]string, error) {
 	}
 	files := make(map[string]string)
 	for _, e := range entries {
-		if e.IsDir() || e.Name() == ".repo" || e.Name() == ".path" {
+		if e.IsDir() || isMetaFile(e.Name()) {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
@@ -337,7 +337,11 @@ func checkClaudeVersion() error {
 		return fmt.Errorf("failed to check claude version: %w", err)
 	}
 	// Output format: "2.1.81 (Claude Code)"
-	versionStr := strings.TrimSpace(strings.Split(string(out), " ")[0])
+	fields := strings.Fields(strings.TrimSpace(string(out)))
+	if len(fields) == 0 {
+		return fmt.Errorf("unexpected claude version output: %q", string(out))
+	}
+	versionStr := fields[0]
 	parts := strings.SplitN(versionStr, ".", 3)
 	if len(parts) < 3 {
 		return fmt.Errorf("unexpected claude version format: %q", versionStr)

@@ -26,8 +26,8 @@ func cmdLs(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	if err := requireInit(dir); err != nil {
+		return err
 	}
 
 	entries, err := os.ReadDir(dir)
@@ -55,7 +55,7 @@ func cmdLs(w io.Writer) error {
 			unit = "file"
 		}
 		pathStr := ""
-		if data, err := os.ReadFile(filepath.Join(projectDir, ".path")); err == nil {
+		if data, err := os.ReadFile(filepath.Join(projectDir, pathMarker)); err == nil {
 			pathStr = "  " + strings.TrimSpace(string(data))
 		}
 		fmt.Fprintf(w, "%-20s %2d %-5s  %s%s\n", e.Name(), n, unit, info.ModTime().Format("2006-01-02"), pathStr)
@@ -74,7 +74,7 @@ func countMemoryFiles(dir string) int {
 	}
 	n := 0
 	for _, e := range entries {
-		if !e.IsDir() && e.Name() != ".repo" && e.Name() != ".path" {
+		if !e.IsDir() && !isMetaFile(e.Name()) {
 			n++
 		}
 	}

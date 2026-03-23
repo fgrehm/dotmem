@@ -45,7 +45,6 @@ func cmdUninstallHook(w io.Writer) error {
 		return nil
 	}
 
-	hookCommand := "dotmem commit"
 	var filtered []any
 	found := false
 	for _, entry := range stopHooks {
