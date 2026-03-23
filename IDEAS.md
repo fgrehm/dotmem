@@ -4,7 +4,7 @@ Future directions for dotmem. Nothing here is committed to, just things worth ex
 
 ## Memory intelligence
 
-- **Streaming compact** -- currently `dotmem compact` waits for `claude --print` to finish. Could use `--output-format stream-json` to show AI decisions in real time, or pipe through `claude` interactively
+- ~~**Streaming compact**~~ -- done (stream-json with file-read progress)
 - **Incremental compaction** -- detect which files changed since last compact and only re-process those, instead of rewriting the full MEMORY.md each time
 - **Deep compaction** -- `dotmem compact --deep` to also compress surviving reference documents (specs, plans) individually, not just merge into MEMORY.md
 - **Per-directory CLAUDE.md from memories** -- generate project-specific CLAUDE.md instructions based on accumulated memory patterns
@@ -21,7 +21,7 @@ Future directions for dotmem. Nothing here is committed to, just things worth ex
 
 ## Organization
 
-- **Rename default directory** -- `~/.dotmem` reads the dot twice ("dot dotmem"). Consider `~/.memories`, `~/.ai-memory`, or similar. `DOTMEM_DIR` override still works regardless.
+- ~~**Rename default directory**~~ -- done (changed to `~/.mem`)
 - **Branch-aware memory** -- organize as `<slug>/branches/<branch>/` or tag memories with branch metadata
 - **Pruning** -- detect and clean up stale project directories
 
@@ -37,4 +37,4 @@ Future directions for dotmem. Nothing here is committed to, just things worth ex
 ## Hardening
 
 - **Claude CLI version check** -- `dotmem compact` could check `claude --version` and fail early if below minimum (tested against 2.1.78+)
-- **Compact recovery docs** -- document that `git checkout -- .` in `~/.dotmem` recovers from a bad compact
+- **Compact recovery docs** -- document that `git checkout -- .` in `~/.mem` recovers from a bad compact

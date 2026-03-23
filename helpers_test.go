@@ -33,7 +33,7 @@ func makeTempRepo(t *testing.T, remoteURL string) string {
 
 func initDotmem(t *testing.T) string {
 	t.Helper()
-	dir := filepath.Join(t.TempDir(), ".dotmem")
+	dir := filepath.Join(t.TempDir(), ".mem")
 	t.Setenv("DOTMEM_DIR", dir)
 	var buf bytes.Buffer
 	if err := cmdInit(&buf); err != nil {

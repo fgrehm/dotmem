@@ -13,7 +13,7 @@ func newInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Initialize the central memory repo",
-		Long:  "Create ~/.dotmem as a git repo for storing Claude Code memory files.",
+		Long:  "Create ~/.mem as a git repo for storing Claude Code memory files.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmdInit(cmd.OutOrStdout())
 		},

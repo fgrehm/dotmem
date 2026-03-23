@@ -10,7 +10,7 @@ import (
 
 func TestCmdInit_HappyPath(t *testing.T) {
 	setupGitEnv(t)
-	dir := filepath.Join(t.TempDir(), ".dotmem")
+	dir := filepath.Join(t.TempDir(), ".mem")
 	t.Setenv("DOTMEM_DIR", dir)
 	var buf bytes.Buffer
 	if err := cmdInit(&buf); err != nil {
@@ -39,7 +39,7 @@ func TestCmdInit_HappyPath(t *testing.T) {
 
 func TestCmdInit_AlreadyExists(t *testing.T) {
 	setupGitEnv(t)
-	dir := filepath.Join(t.TempDir(), ".dotmem")
+	dir := filepath.Join(t.TempDir(), ".mem")
 	t.Setenv("DOTMEM_DIR", dir)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatal(err)

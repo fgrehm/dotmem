@@ -23,7 +23,7 @@ func dotmemDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(home, ".dotmem"), nil
+	return filepath.Join(home, ".mem"), nil
 }
 
 func gitExec(dir string, args ...string) (string, error) {

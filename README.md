@@ -15,11 +15,11 @@ all project memories into a single git repo:
 
 ## How it works
 
-dotmem creates a central git repo at `~/.dotmem/` (override with `DOTMEM_DIR`, must
+dotmem creates a central git repo at `~/.mem/` (override with `DOTMEM_DIR`, must
 be an absolute path). Each linked project gets its own subdirectory:
 
 ```
-~/.dotmem/                      <- central git repo
+~/.mem/                      <- central git repo
 ├── .gitignore
 ├── README.md
 ├── my-app/                     <- one dir per project
@@ -82,13 +82,13 @@ go install github.com/fgrehm/dotmem@latest
 ## Quickstart
 
 ```sh
-dotmem init              # create ~/.dotmem as a git repo
+dotmem init              # create ~/.mem as a git repo
 dotmem install-hook      # register the Claude Code Stop hook
 cd ~/projects/my-app     # must be a git repo with a remote origin
-dotmem link              # link this project's memory to ~/.dotmem/my-app
+dotmem link              # link this project's memory to ~/.mem/my-app
 ```
 
-That's it. Claude Code now writes memory files to `~/.dotmem/my-app/` and the
+That's it. Claude Code now writes memory files to `~/.mem/my-app/` and the
 Stop hook auto-commits them after every session.
 
 Repeat `dotmem link` inside each project you want to track. Make sure
@@ -103,14 +103,14 @@ don't commit machine-specific paths.
 
 | Command | Description |
 |---|---|
-| `dotmem init` | Create the central memory repo at `~/.dotmem` |
+| `dotmem init` | Create the central memory repo at `~/.mem` |
 | `dotmem link [slug]` | Link the current project (derives slug from dir name if omitted, `-y` to skip prompts) |
 | `dotmem commit` | Auto-commit changed memory files (always exits 0, silent by default) |
 | `dotmem compact <slug>` | Merge memory files into a single MEMORY.md via Claude (requires `claude` CLI; `-m` model, `-e` effort, `-y` skip prompt) |
 | `dotmem install-hook` | Register the Stop hook in `~/.claude/settings.json` |
 | `dotmem status` | List linked projects with last-modified dates |
 
-Set `DOTMEM_DIR` to an absolute path to override the default `~/.dotmem` location.
+Set `DOTMEM_DIR` to an absolute path to override the default `~/.mem` location.
 If you use a custom `DOTMEM_DIR`, make sure it's set in your shell profile so the
 Stop hook can see it. Set `DOTMEM_DEBUG=1` for verbose output from `dotmem commit`.
 
@@ -131,7 +131,7 @@ If Claude ignores `autoMemoryDirectory` and writes to the default location, add 
 explicit instruction to your project's `CLAUDE.md`:
 
 ```markdown
-Write memory files to ~/.dotmem/<your-slug>/ (not the default auto memory location).
+Write memory files to ~/.mem/<your-slug>/ (not the default auto memory location).
 ```
 
 Related issues: [#33535](https://github.com/anthropics/claude-code/issues/33535),
@@ -143,7 +143,7 @@ Related issues: [#33535](https://github.com/anthropics/claude-code/issues/33535)
 manually:
 
 ```sh
-cp ~/.claude/projects/<project>/memory/* ~/.dotmem/<slug>/
+cp ~/.claude/projects/<project>/memory/* ~/.mem/<slug>/
 ```
 
 ### Reverting a bad compact
@@ -151,7 +151,7 @@ cp ~/.claude/projects/<project>/memory/* ~/.dotmem/<slug>/
 `dotmem compact` auto-commits after applying changes. If the result looks wrong:
 
 ```sh
-cd ~/.dotmem
+cd ~/.mem
 git log --oneline     # find the commit before compact
 git revert HEAD       # undo the compact commit
 ```
@@ -159,7 +159,7 @@ git revert HEAD       # undo the compact commit
 ### Remote origin URL changed
 
 If your project's remote origin URL changes (repo rename or transfer), `dotmem link`
-will report a slug collision. Update the `.repo` file in `~/.dotmem/<slug>/.repo`
+will report a slug collision. Update the `.repo` file in `~/.mem/<slug>/.repo`
 with the new URL and re-run `dotmem link`.
 
 ### Uninstalling
@@ -168,7 +168,7 @@ To stop using dotmem:
 
 1. Remove `autoMemoryDirectory` from each project's `.claude/settings.local.json`
 2. Remove the `dotmem commit` Stop hook from `~/.claude/settings.json`
-3. Optionally delete `~/.dotmem/` (or keep it as a read-only archive)
+3. Optionally delete `~/.mem/` (or keep it as a read-only archive)
 
 ## Alternatives
 
