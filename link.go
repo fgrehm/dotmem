@@ -89,8 +89,21 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	if err := os.WriteFile(pathFile, []byte(canonical+"\n"), 0644); err != nil {
 		return err
 	}
-	if err := ensureGitignoreRule(filepath.Join(dir, ".gitignore"), "**/.path"); err != nil {
+	gitignorePath := filepath.Join(dir, ".gitignore")
+	if err := ensureGitignoreRule(gitignorePath, "**/.path"); err != nil {
 		return err
+	}
+	statusOut, err := gitExec(dir, "status", "--porcelain", ".gitignore")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(statusOut) != "" {
+		if _, err := gitExec(dir, "add", ".gitignore"); err != nil {
+			return err
+		}
+		if _, err := gitExec(dir, "commit", "-m", "link: update .gitignore for legacy repos"); err != nil {
+			return err
+		}
 	}
 
 	claudeDir := filepath.Join(toplevel, ".claude")

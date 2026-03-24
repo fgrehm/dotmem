@@ -53,6 +53,9 @@ func cmdCd(slug string) error {
 			return err
 		}
 		target = strings.TrimSpace(string(data))
+		if target == "" {
+			return fmt.Errorf("project path in .path is empty")
+		}
 		info, err := os.Stat(target)
 		if err != nil {
 			if os.IsNotExist(err) {
