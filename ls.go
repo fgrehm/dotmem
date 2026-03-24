@@ -5,28 +5,29 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-func newStatusCmd() *cobra.Command {
+func newLsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "status",
+		Use:   "ls",
 		Short: "List linked projects",
 		Long:  "List all projects linked to the central dotmem repo with last-modified dates.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmdStatus(cmd.OutOrStdout())
+			return cmdLs(cmd.OutOrStdout())
 		},
 	}
 }
 
-func cmdStatus(w io.Writer) error {
+func cmdLs(w io.Writer) error {
 	dir, err := dotmemDir()
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	if err := requireInit(dir); err != nil {
+		return err
 	}
 
 	entries, err := os.ReadDir(dir)
@@ -47,12 +48,17 @@ func cmdStatus(w io.Writer) error {
 		if err != nil {
 			continue
 		}
-		n := countMemoryFiles(filepath.Join(dir, e.Name()))
+		projectDir := filepath.Join(dir, e.Name())
+		n := countMemoryFiles(projectDir)
 		unit := "files"
 		if n == 1 {
 			unit = "file"
 		}
-		fmt.Fprintf(w, "%-20s %2d %-5s  %s\n", e.Name(), n, unit, info.ModTime().Format("2006-01-02"))
+		pathStr := ""
+		if data, err := os.ReadFile(filepath.Join(projectDir, pathMarker)); err == nil {
+			pathStr = "  " + strings.TrimSpace(string(data))
+		}
+		fmt.Fprintf(w, "%-20s %2d %-5s  %s%s\n", e.Name(), n, unit, info.ModTime().Format("2006-01-02"), pathStr)
 	}
 
 	if !found {
@@ -68,7 +74,7 @@ func countMemoryFiles(dir string) int {
 	}
 	n := 0
 	for _, e := range entries {
-		if !e.IsDir() && e.Name() != ".repo" {
+		if !e.IsDir() && !isMetaFile(e.Name()) {
 			n++
 		}
 	}

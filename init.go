@@ -13,7 +13,7 @@ func newInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Initialize the central memory repo",
-		Long:  "Create ~/.dotmem as a git repo for storing Claude Code memory files.",
+		Long:  "Create ~/.mem as a git repo for storing Claude Code memory files.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmdInit(cmd.OutOrStdout())
 		},
@@ -34,7 +34,7 @@ func cmdInit(w io.Writer) error {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".DS_Store\n*.swp\n*~\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".DS_Store\n*.swp\n*~\n**/.path\n"), 0644); err != nil {
 		return err
 	}
 

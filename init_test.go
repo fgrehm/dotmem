@@ -10,7 +10,7 @@ import (
 
 func TestCmdInit_HappyPath(t *testing.T) {
 	setupGitEnv(t)
-	dir := filepath.Join(t.TempDir(), ".dotmem")
+	dir := filepath.Join(t.TempDir(), ".mem")
 	t.Setenv("DOTMEM_DIR", dir)
 	var buf bytes.Buffer
 	if err := cmdInit(&buf); err != nil {
@@ -35,11 +35,19 @@ func TestCmdInit_HappyPath(t *testing.T) {
 	if !strings.Contains(log, "init: create dotmem repo") {
 		t.Errorf("expected init commit, got: %s", log)
 	}
+
+	gitignore, err := os.ReadFile(filepath.Join(dir, ".gitignore"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(gitignore), ".path") {
+		t.Error("expected .path in .gitignore")
+	}
 }
 
 func TestCmdInit_AlreadyExists(t *testing.T) {
 	setupGitEnv(t)
-	dir := filepath.Join(t.TempDir(), ".dotmem")
+	dir := filepath.Join(t.TempDir(), ".mem")
 	t.Setenv("DOTMEM_DIR", dir)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatal(err)

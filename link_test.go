@@ -68,6 +68,15 @@ func TestCmdLink_HappyPath(t *testing.T) {
 		t.Errorf(".repo content: got %q, want %q", strings.TrimSpace(string(data)), actualRemote)
 	}
 
+	pathFile := filepath.Join(dotmemDir, "my-app", ".path")
+	pathData, err := os.ReadFile(pathFile)
+	if err != nil {
+		t.Fatalf("missing .path file: %v", err)
+	}
+	if strings.TrimSpace(string(pathData)) != repoDir {
+		t.Errorf(".path content: got %q, want %q", strings.TrimSpace(string(pathData)), repoDir)
+	}
+
 	log, err := gitExec(dotmemDir, "log", "--oneline")
 	if err != nil {
 		t.Fatal(err)
@@ -348,9 +357,14 @@ func TestCmdLink_OverwriteForce(t *testing.T) {
 		t.Fatalf("expected success with -y, got %v", err)
 	}
 
-	raw, _ := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
+	raw, err := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
+	if err != nil {
+		t.Fatalf("failed to read settings.local.json: %v", err)
+	}
 	var settings map[string]any
-	json.Unmarshal(raw, &settings)
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		t.Fatalf("failed to unmarshal settings.local.json: %v (raw: %s)", err, string(raw))
+	}
 	want := filepath.Join(dotmemDir, "myapp")
 	if settings["autoMemoryDirectory"] != want {
 		t.Errorf("autoMemoryDirectory not updated: got %v, want %q", settings["autoMemoryDirectory"], want)
@@ -383,6 +397,30 @@ func TestCmdLink_DerivedSlug(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dotmemDir, "my-project")); err != nil {
 		t.Error("expected my-project dir derived from dirname")
+	}
+}
+
+func TestCmdLink_EnsuresPathGitignore(t *testing.T) {
+	setupGitEnv(t)
+	dotmemDir := initDotmem(t)
+	repoDir := makeTempRepo(t, t.TempDir())
+	chdirTo(t, repoDir)
+
+	// Simulate a legacy dotmem repo without the **/.path rule.
+	gitignorePath := filepath.Join(dotmemDir, ".gitignore")
+	mustWriteFile(t, gitignorePath, []byte(".DS_Store\n"))
+
+	var buf bytes.Buffer
+	if err := cmdLink(&buf, strings.NewReader(""), "myapp", false); err != nil {
+		t.Fatalf("link: %v", err)
+	}
+
+	data, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "**/.path") {
+		t.Error("expected **/.path to be added to .gitignore for backwards compat")
 	}
 }
 

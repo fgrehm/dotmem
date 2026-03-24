@@ -8,6 +8,27 @@ import (
 	"testing"
 )
 
+func mustWriteFile(t *testing.T, path string, data []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+func mustWriteExec(t *testing.T, path string, data []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, data, 0755); err != nil {
+		t.Fatalf("write exec %s: %v", path, err)
+	}
+}
+
+func mustMkdirAll(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+}
+
 func setupGitEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("GIT_AUTHOR_NAME", "Test User")
@@ -33,7 +54,7 @@ func makeTempRepo(t *testing.T, remoteURL string) string {
 
 func initDotmem(t *testing.T) string {
 	t.Helper()
-	dir := filepath.Join(t.TempDir(), ".dotmem")
+	dir := filepath.Join(t.TempDir(), ".mem")
 	t.Setenv("DOTMEM_DIR", dir)
 	var buf bytes.Buffer
 	if err := cmdInit(&buf); err != nil {
@@ -83,7 +104,7 @@ func TestReadJSONSettings_NotFound(t *testing.T) {
 
 func TestReadJSONSettings_EmptyFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	os.WriteFile(path, []byte(""), 0644)
+	mustWriteFile(t, path, []byte(""))
 
 	settings, err := readJSONSettings(path)
 	if err != nil {
@@ -96,7 +117,7 @@ func TestReadJSONSettings_EmptyFile(t *testing.T) {
 
 func TestReadJSONSettings_CorruptJSON(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	os.WriteFile(path, []byte("{bad json}"), 0644)
+	mustWriteFile(t, path, []byte("{bad json}"))
 
 	_, err := readJSONSettings(path)
 	if err == nil {
@@ -109,7 +130,7 @@ func TestReadJSONSettings_CorruptJSON(t *testing.T) {
 
 func TestReadJSONSettings_ValidJSON(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	os.WriteFile(path, []byte(`{"key": "value"}`), 0644)
+	mustWriteFile(t, path, []byte(`{"key": "value"}`))
 
 	settings, err := readJSONSettings(path)
 	if err != nil {
@@ -139,8 +160,97 @@ func TestWriteJSONSettings(t *testing.T) {
 	}
 
 	// Verify trailing newline.
-	data, _ := os.ReadFile(path)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
 	if !strings.HasSuffix(string(data), "\n") {
 		t.Error("expected trailing newline")
+	}
+}
+
+func TestEnsureGitignoreRule(t *testing.T) {
+	readFile := func(t *testing.T, path string) string {
+		t.Helper()
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", path, err)
+		}
+		return string(data)
+	}
+
+	t.Run("creates file with rule", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(readFile(t, path), "**/.path") {
+			t.Error("expected rule in new file")
+		}
+	})
+
+	t.Run("appends to existing file with trailing newline", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		mustWriteFile(t, path, []byte(".DS_Store\n"))
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		got := readFile(t, path)
+		if !strings.Contains(got, ".DS_Store") {
+			t.Error("existing rule lost")
+		}
+		if !strings.Contains(got, "**/.path") {
+			t.Error("new rule not appended")
+		}
+	})
+
+	t.Run("appends to file without trailing newline", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		mustWriteFile(t, path, []byte(".DS_Store")) // no trailing newline
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		got := readFile(t, path)
+		// Both rules must appear on separate lines.
+		if !strings.Contains(got, ".DS_Store\n") {
+			t.Errorf("trailing newline not inserted before new rule: %q", got)
+		}
+		if !strings.Contains(got, "**/.path") {
+			t.Error("new rule not appended")
+		}
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), ".gitignore")
+		mustWriteFile(t, path, []byte("**/.path\n"))
+		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+			t.Fatal(err)
+		}
+		count := strings.Count(readFile(t, path), "**/.path")
+		if count != 1 {
+			t.Errorf("expected rule exactly once, got %d", count)
+		}
+	})
+}
+
+func TestValidateSlug(t *testing.T) {
+	tests := []struct {
+		slug    string
+		wantErr bool
+	}{
+		{"myapp", false},
+		{"my-app", false},
+		{"", true},
+		{".", true},
+		{"..", true},
+		{"../evil", true},
+		{"a/b", true},
+		{"-flag", true},
+	}
+	for _, tt := range tests {
+		err := validateSlug(tt.slug)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("validateSlug(%q): err=%v, wantErr=%v", tt.slug, err, tt.wantErr)
+		}
 	}
 }

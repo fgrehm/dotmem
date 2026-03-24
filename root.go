@@ -22,10 +22,15 @@ single git repo with automatic versioning via Stop hooks.`,
 	cmd.AddCommand(
 		newInitCmd(),
 		newLinkCmd(),
+		newUnlinkCmd(),
 		newCommitCmd(),
 		newCompactCmd(),
 		newInstallHookCmd(),
-		newStatusCmd(),
+		newUninstallHookCmd(),
+		newLsCmd(),
+		newLogCmd(),
+		newPushCmd(),
+		newCdCmd(),
 	)
 
 	return cmd

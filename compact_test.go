@@ -33,7 +33,7 @@ func fakeClaude(t *testing.T, result compactResult) {
 	}
 
 	fake := filepath.Join(binDir, "claude")
-	script := fmt.Sprintf("#!/bin/sh\ncat %s\n", dataFile)
+	script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"99.0.0 (Claude Code)\"; exit 0; fi\ncat %s\n", dataFile)
 	if err := os.WriteFile(fake, []byte(script), 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -100,9 +100,9 @@ func TestCmdCompact_ClaudeNotOnPath(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	os.MkdirAll(projectDir, 0755)
-	os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644)
-	os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644)
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
 	t.Setenv("PATH", "")
 
 	var buf bytes.Buffer
@@ -265,12 +265,86 @@ func TestCmdCompact_PathTraversal(t *testing.T) {
 	}
 }
 
+func TestCmdCompact_OldClaudeVersion(t *testing.T) {
+	setupGitEnv(t)
+	dotmemDir := initDotmem(t)
+	projectDir := filepath.Join(dotmemDir, "myapp")
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
+
+	// Create a fake claude that reports an old version.
+	binDir := t.TempDir()
+	fake := filepath.Join(binDir, "claude")
+	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"1.0.0 (Claude Code)\"; exit 0; fi\n"
+	mustWriteExec(t, fake, []byte(script))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	var buf bytes.Buffer
+	err := cmdCompact(context.Background(), &buf, strings.NewReader(""), "myapp", true, "", "")
+	if err == nil {
+		t.Fatal("expected error for old version")
+	}
+	if !strings.Contains(err.Error(), "too old") {
+		t.Errorf("expected 'too old' error, got %q", err.Error())
+	}
+}
+
+func TestCmdCompact_EmptyClaudeVersion(t *testing.T) {
+	setupGitEnv(t)
+	dotmemDir := initDotmem(t)
+	projectDir := filepath.Join(dotmemDir, "myapp")
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
+
+	binDir := t.TempDir()
+	fake := filepath.Join(binDir, "claude")
+	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"\"; exit 0; fi\n"
+	mustWriteExec(t, fake, []byte(script))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	var buf bytes.Buffer
+	err := cmdCompact(context.Background(), &buf, strings.NewReader(""), "myapp", true, "", "")
+	if err == nil {
+		t.Fatal("expected error for empty version")
+	}
+	if !strings.Contains(err.Error(), "unexpected claude version") {
+		t.Errorf("expected 'unexpected claude version' error, got %q", err.Error())
+	}
+}
+
+func TestCmdCompact_MalformedClaudeVersion(t *testing.T) {
+	setupGitEnv(t)
+	dotmemDir := initDotmem(t)
+	projectDir := filepath.Join(dotmemDir, "myapp")
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
+
+	binDir := t.TempDir()
+	fake := filepath.Join(binDir, "claude")
+	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"not-a-version\"; exit 0; fi\n"
+	mustWriteExec(t, fake, []byte(script))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	var buf bytes.Buffer
+	err := cmdCompact(context.Background(), &buf, strings.NewReader(""), "myapp", true, "", "")
+	if err == nil {
+		t.Fatal("expected error for malformed version")
+	}
+	if !strings.Contains(err.Error(), "unexpected claude version") {
+		t.Errorf("expected 'unexpected claude version' error, got %q", err.Error())
+	}
+}
+
 func TestReadMemoryFiles(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "MEMORY.md"), []byte("memory\n"), 0644)
-	os.WriteFile(filepath.Join(dir, "notes.md"), []byte("notes\n"), 0644)
-	os.WriteFile(filepath.Join(dir, ".repo"), []byte("url\n"), 0644)
-	os.MkdirAll(filepath.Join(dir, "subdir"), 0755)
+	mustWriteFile(t, filepath.Join(dir, "MEMORY.md"), []byte("memory\n"))
+	mustWriteFile(t, filepath.Join(dir, "notes.md"), []byte("notes\n"))
+	mustWriteFile(t, filepath.Join(dir, ".repo"), []byte("url\n"))
+	mustWriteFile(t, filepath.Join(dir, ".path"), []byte("/some/path\n"))
+	mustMkdirAll(t, filepath.Join(dir, "subdir"))
 
 	files, err := readMemoryFiles(dir)
 	if err != nil {
@@ -281,6 +355,9 @@ func TestReadMemoryFiles(t *testing.T) {
 	}
 	if _, ok := files[".repo"]; ok {
 		t.Error(".repo should be excluded")
+	}
+	if _, ok := files[".path"]; ok {
+		t.Error(".path should be excluded")
 	}
 	if _, ok := files["MEMORY.md"]; !ok {
 		t.Error("MEMORY.md should be included")

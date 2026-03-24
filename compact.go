@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -18,18 +19,24 @@ import (
 
 func newCompactCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "compact <slug>",
+		Use:   "compact [slug]",
 		Short: "Compact memory files into a single MEMORY.md",
 		Long: `Merge all memory files for a project into a single MEMORY.md using
 Claude to extract, deduplicate, and organize. Files that serve as
 standalone reference documents (specs, plans, checklists) are kept.
-Requires the claude CLI to be on PATH.`,
-		Args: cobra.ExactArgs(1),
+Requires the claude CLI to be on PATH.
+
+If slug is omitted, auto-detects from the current project directory.`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			slug := ""
+			if len(args) > 0 {
+				slug = args[0]
+			}
 			yes, _ := cmd.Flags().GetBool("yes")
 			model, _ := cmd.Flags().GetString("model")
 			effort, _ := cmd.Flags().GetString("effort")
-			return cmdCompact(cmd.Context(), cmd.OutOrStdout(), cmd.InOrStdin(), args[0], yes, model, effort)
+			return cmdCompact(cmd.Context(), cmd.OutOrStdout(), cmd.InOrStdin(), slug, yes, model, effort)
 		},
 	}
 	cmd.Flags().BoolP("yes", "y", false, "skip confirmation prompt")
@@ -59,8 +66,21 @@ func cmdCompact(ctx context.Context, w io.Writer, r io.Reader, slug string, forc
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	if err := requireInit(dir); err != nil {
+		return err
+	}
+
+	if slug == "" {
+		resolved, err := resolveSlug(dir)
+		if err != nil {
+			return err
+		}
+		slug = resolved
+	} else {
+		slug = normalizeSlug(slug)
+		if err := validateSlug(slug); err != nil {
+			return err
+		}
 	}
 
 	projectDir := filepath.Join(dir, slug)
@@ -83,7 +103,10 @@ func cmdCompact(ctx context.Context, w io.Writer, r io.Reader, slug string, forc
 	}
 
 	if _, err := exec.LookPath("claude"); err != nil {
-		return fmt.Errorf("\"claude\" not found on PATH. Install Claude Code first.")
+		return fmt.Errorf("\"claude\" not found on PATH; install Claude Code first")
+	}
+	if err := checkClaudeVersion(); err != nil {
+		return err
 	}
 
 	names := make([]string, 0, len(files))
@@ -168,7 +191,7 @@ func readMemoryFiles(dir string) (map[string]string, error) {
 	}
 	files := make(map[string]string)
 	for _, e := range entries {
-		if e.IsDir() || e.Name() == ".repo" {
+		if e.IsDir() || isMetaFile(e.Name()) {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
@@ -309,4 +332,38 @@ func runClaude(ctx context.Context, w io.Writer, projectDir string, prompt strin
 	}
 
 	return &result, nil
+}
+
+var minClaudeVersion = [3]int{2, 1, 78}
+
+func checkClaudeVersion() error {
+	out, err := exec.Command("claude", "--version").Output()
+	if err != nil {
+		return fmt.Errorf("failed to check claude version: %w", err)
+	}
+	// Output format: "2.1.81 (Claude Code)"
+	fields := strings.Fields(strings.TrimSpace(string(out)))
+	if len(fields) == 0 {
+		return fmt.Errorf("unexpected claude version output: %q", string(out))
+	}
+	versionStr := fields[0]
+	parts := strings.SplitN(versionStr, ".", 3)
+	if len(parts) < 3 {
+		return fmt.Errorf("unexpected claude version format: %q", versionStr)
+	}
+	var ver [3]int
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return fmt.Errorf("unexpected claude version format: %q", versionStr)
+		}
+		ver[i] = n
+	}
+	if ver[0] < minClaudeVersion[0] ||
+		(ver[0] == minClaudeVersion[0] && ver[1] < minClaudeVersion[1]) ||
+		(ver[0] == minClaudeVersion[0] && ver[1] == minClaudeVersion[1] && ver[2] < minClaudeVersion[2]) {
+		return fmt.Errorf("claude %s is too old; dotmem compact requires %d.%d.%d or later",
+			versionStr, minClaudeVersion[0], minClaudeVersion[1], minClaudeVersion[2])
+	}
+	return nil
 }

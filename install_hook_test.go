@@ -91,9 +91,14 @@ func TestCmdInstallHook_MergesExistingSettings(t *testing.T) {
 		t.Fatalf("install: %v", err)
 	}
 
-	raw, _ := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	raw, err := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	if err != nil {
+		t.Fatalf("failed to read settings.json: %v", err)
+	}
 	var settings map[string]any
-	json.Unmarshal(raw, &settings)
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		t.Fatalf("failed to unmarshal settings.json: %v (raw: %s)", err, string(raw))
+	}
 	if settings["theme"] != "dark" {
 		t.Error("existing 'theme' key was lost")
 	}

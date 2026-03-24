@@ -36,29 +36,36 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-		return fmt.Errorf("not initialized. Run \"dotmem init\" first.")
+	if err := requireInit(dir); err != nil {
+		return err
 	}
 
 	toplevel, err := gitExec(".", "rev-parse", "--show-toplevel")
 	if err != nil {
-		return fmt.Errorf("not a git repository")
+		return fmt.Errorf("not a git repository: %w", err)
 	}
 
 	remoteURL, err := gitExec(toplevel, "remote", "get-url", "origin")
 	if err != nil {
-		return fmt.Errorf("no remote origin found. dotmem link requires a git remote named \"origin\".")
+		return fmt.Errorf("no remote origin found; dotmem link requires a git remote named \"origin\": %w", err)
 	}
 
 	if slug == "" {
 		slug = filepath.Base(toplevel)
 	}
 	slug = normalizeSlug(slug)
+	if err := validateSlug(slug); err != nil {
+		return err
+	}
 
 	projectDir := filepath.Join(dir, slug)
-	repoFile := filepath.Join(projectDir, ".repo")
+	repoFile := filepath.Join(projectDir, repoMarker)
+	canonical := mainWorktree(toplevel)
 
-	if _, err := os.Stat(projectDir); err == nil {
+	if _, err := os.Stat(projectDir); err == nil || !os.IsNotExist(err) {
+		if err != nil {
+			return fmt.Errorf("failed to stat project directory: %w", err)
+		}
 		existing, err := os.ReadFile(repoFile)
 		if err == nil {
 			existingURL := strings.TrimSpace(string(existing))
@@ -73,10 +80,31 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 		if err := os.WriteFile(repoFile, []byte(remoteURL+"\n"), 0644); err != nil {
 			return err
 		}
-		if _, err := gitExec(dir, "add", "-A"); err != nil {
+		if _, err := gitExec(dir, "add", slug); err != nil {
 			return err
 		}
 		if _, err := gitExec(dir, "commit", "-m", fmt.Sprintf("link: add %s", slug)); err != nil {
+			return err
+		}
+	}
+
+	pathFile := filepath.Join(projectDir, pathMarker)
+	if err := os.WriteFile(pathFile, []byte(canonical+"\n"), 0644); err != nil {
+		return err
+	}
+	gitignorePath := filepath.Join(dir, ".gitignore")
+	if err := ensureGitignoreRule(gitignorePath, "**/.path"); err != nil {
+		return err
+	}
+	statusOut, err := gitExec(dir, "status", "--porcelain", ".gitignore")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(statusOut) != "" {
+		if _, err := gitExec(dir, "add", ".gitignore"); err != nil {
+			return err
+		}
+		if _, err := gitExec(dir, "commit", "-m", "link: update .gitignore for legacy repos", ".gitignore"); err != nil {
 			return err
 		}
 	}

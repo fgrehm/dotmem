@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-func TestCmdStatus_NotInitialized(t *testing.T) {
+func TestCmdLs_NotInitialized(t *testing.T) {
 	t.Setenv("DOTMEM_DIR", filepath.Join(t.TempDir(), "nonexistent"))
 	var buf bytes.Buffer
-	err := cmdStatus(&buf)
+	err := cmdLs(&buf)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -20,11 +20,11 @@ func TestCmdStatus_NotInitialized(t *testing.T) {
 	}
 }
 
-func TestCmdStatus_NoProjects(t *testing.T) {
+func TestCmdLs_NoProjects(t *testing.T) {
 	setupGitEnv(t)
 	initDotmem(t)
 	var buf bytes.Buffer
-	if err := cmdStatus(&buf); err != nil {
+	if err := cmdLs(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(buf.String(), "no linked projects") {
@@ -32,22 +32,24 @@ func TestCmdStatus_NoProjects(t *testing.T) {
 	}
 }
 
-func TestCmdStatus_WithProjects(t *testing.T) {
+func TestCmdLs_WithProjects(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "my-project")
 	if err := os.MkdirAll(projectDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	// Add memory files and a .repo marker (should not be counted).
 	for _, f := range []string{"MEMORY.md", "debugging.md", ".repo"} {
 		if err := os.WriteFile(filepath.Join(projectDir, f), []byte("test\n"), 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
+	if err := os.WriteFile(filepath.Join(projectDir, ".path"), []byte("/home/user/my-project\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	var buf bytes.Buffer
-	if err := cmdStatus(&buf); err != nil {
+	if err := cmdLs(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	out := buf.String()
@@ -60,9 +62,12 @@ func TestCmdStatus_WithProjects(t *testing.T) {
 	if !strings.Contains(out, "2 files") {
 		t.Errorf("expected '2 files' in output, got %q", out)
 	}
+	if !strings.Contains(out, "/home/user/my-project") {
+		t.Errorf("expected project path in output, got %q", out)
+	}
 }
 
-func TestCmdStatus_SingleFile(t *testing.T) {
+func TestCmdLs_SingleFile(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "solo")
@@ -74,7 +79,7 @@ func TestCmdStatus_SingleFile(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := cmdStatus(&buf); err != nil {
+	if err := cmdLs(&buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(buf.String(), "1 file") {
