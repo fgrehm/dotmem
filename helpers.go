@@ -18,10 +18,14 @@ const (
 )
 
 func requireInit(dir string) error {
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
+	_, err := os.Stat(filepath.Join(dir, ".git"))
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
 		return fmt.Errorf("not initialized; run \"dotmem init\" first")
 	}
-	return nil
+	return fmt.Errorf("failed to check dotmem repo: %w", err)
 }
 
 func validateSlug(slug string) error {

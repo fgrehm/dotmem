@@ -62,7 +62,10 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	repoFile := filepath.Join(projectDir, repoMarker)
 	canonical := mainWorktree(toplevel)
 
-	if _, err := os.Stat(projectDir); err == nil {
+	if _, err := os.Stat(projectDir); err == nil || !os.IsNotExist(err) {
+		if err != nil {
+			return fmt.Errorf("failed to stat project directory: %w", err)
+		}
 		existing, err := os.ReadFile(repoFile)
 		if err == nil {
 			existingURL := strings.TrimSpace(string(existing))
