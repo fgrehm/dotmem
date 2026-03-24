@@ -50,3 +50,6 @@ helpers.go       dotmemDir(), gitExec(), resolveSlug(), JSON helpers
 - `readMemoryFiles()` skips `.repo` and `.path`.
 - JSON: `encoding/json` only, `map[string]any` for round-tripping. Atomic writes (temp file + rename) for settings.
 - No external dependencies beyond cobra.
+- Slug normalization: call `normalizeSlug(slug)` on any user-supplied slug before `validateSlug` and directory lookup. Auto-detected slugs from `resolveSlug()` are already normalized.
+- Git staging: stage only the intended paths. Never `git add -A` in link/commit-style operations on the dotmem repo; use `git add <path>` or `git commit -m "..." <file>` to limit scope.
+- Error wrapping: wrap `gitExec` errors with `%w`, don't replace them with bare strings.
