@@ -77,7 +77,7 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 		if err := os.WriteFile(repoFile, []byte(remoteURL+"\n"), 0644); err != nil {
 			return err
 		}
-		if _, err := gitExec(dir, "add", "-A"); err != nil {
+		if _, err := gitExec(dir, "add", slug); err != nil {
 			return err
 		}
 		if _, err := gitExec(dir, "commit", "-m", fmt.Sprintf("link: add %s", slug)); err != nil {
@@ -98,10 +98,7 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 		return err
 	}
 	if strings.TrimSpace(statusOut) != "" {
-		if _, err := gitExec(dir, "add", ".gitignore"); err != nil {
-			return err
-		}
-		if _, err := gitExec(dir, "commit", "-m", "link: update .gitignore for legacy repos"); err != nil {
+		if _, err := gitExec(dir, "commit", "-m", "link: update .gitignore for legacy repos", ".gitignore"); err != nil {
 			return err
 		}
 	}
