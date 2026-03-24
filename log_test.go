@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,9 +19,13 @@ func TestCmdLog_HappyPath(t *testing.T) {
 	}
 
 	// Add a memory file and commit.
-	os.WriteFile(filepath.Join(dotmemDir, "myapp", "MEMORY.md"), []byte("# Memory\n"), 0644)
-	gitExec(dotmemDir, "add", "-A")
-	gitExec(dotmemDir, "commit", "-m", "commit: auto-save")
+	mustWriteFile(t, filepath.Join(dotmemDir, "myapp", "MEMORY.md"), []byte("# Memory\n"))
+	if _, err := gitExec(dotmemDir, "add", "-A"); err != nil {
+		t.Fatalf("git add: %v", err)
+	}
+	if _, err := gitExec(dotmemDir, "commit", "-m", "commit: auto-save"); err != nil {
+		t.Fatalf("git commit: %v", err)
+	}
 
 	buf.Reset()
 	if err := cmdLog(&buf, "myapp"); err != nil {
@@ -74,9 +77,13 @@ func TestCmdLog_AutoDetectSlug(t *testing.T) {
 		t.Fatalf("link: %v", err)
 	}
 
-	os.WriteFile(filepath.Join(dotmemDir, "myapp", "MEMORY.md"), []byte("# Memory\n"), 0644)
-	gitExec(dotmemDir, "add", "-A")
-	gitExec(dotmemDir, "commit", "-m", "commit: auto-save")
+	mustWriteFile(t, filepath.Join(dotmemDir, "myapp", "MEMORY.md"), []byte("# Memory\n"))
+	if _, err := gitExec(dotmemDir, "add", "-A"); err != nil {
+		t.Fatalf("git add: %v", err)
+	}
+	if _, err := gitExec(dotmemDir, "commit", "-m", "commit: auto-save"); err != nil {
+		t.Fatalf("git commit: %v", err)
+	}
 
 	buf.Reset()
 	// Empty slug triggers auto-detection from cwd.
@@ -110,7 +117,7 @@ func TestCmdLog_NoHistory(t *testing.T) {
 
 	// Create project dir manually (no commits touching it).
 	projectDir := filepath.Join(dotmemDir, "empty")
-	os.MkdirAll(projectDir, 0755)
+	mustMkdirAll(t, projectDir)
 
 	var buf bytes.Buffer
 	if err := cmdLog(&buf, "empty"); err != nil {

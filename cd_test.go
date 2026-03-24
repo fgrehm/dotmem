@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,8 +35,8 @@ func TestCmdCd_ProjectPathGone(t *testing.T) {
 	dotmemDir := initDotmem(t)
 
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	os.MkdirAll(projectDir, 0755)
-	os.WriteFile(filepath.Join(projectDir, ".path"), []byte("/nonexistent/path\n"), 0644)
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, ".path"), []byte("/nonexistent/path\n"))
 
 	err := cmdCd("myapp")
 	if err == nil {
@@ -76,8 +75,8 @@ func TestCmdCd_ProjectDir(t *testing.T) {
 
 	targetDir := t.TempDir()
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	os.MkdirAll(projectDir, 0755)
-	os.WriteFile(filepath.Join(projectDir, ".path"), []byte(targetDir+"\n"), 0644)
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, ".path"), []byte(targetDir+"\n"))
 
 	t.Setenv("SHELL", "/bin/true")
 	if err := cmdCd("myapp"); err != nil {

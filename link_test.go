@@ -408,7 +408,7 @@ func TestCmdLink_EnsuresPathGitignore(t *testing.T) {
 
 	// Simulate a legacy dotmem repo without the **/.path rule.
 	gitignorePath := filepath.Join(dotmemDir, ".gitignore")
-	os.WriteFile(gitignorePath, []byte(".DS_Store\n"), 0644)
+	mustWriteFile(t, gitignorePath, []byte(".DS_Store\n"))
 
 	var buf bytes.Buffer
 	if err := cmdLink(&buf, strings.NewReader(""), "myapp", false); err != nil {

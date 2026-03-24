@@ -100,9 +100,9 @@ func TestCmdCompact_ClaudeNotOnPath(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	os.MkdirAll(projectDir, 0755)
-	os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644)
-	os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644)
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
 	t.Setenv("PATH", "")
 
 	var buf bytes.Buffer
@@ -269,15 +269,15 @@ func TestCmdCompact_OldClaudeVersion(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	os.MkdirAll(projectDir, 0755)
-	os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644)
-	os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644)
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
 
 	// Create a fake claude that reports an old version.
 	binDir := t.TempDir()
 	fake := filepath.Join(binDir, "claude")
 	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"1.0.0 (Claude Code)\"; exit 0; fi\n"
-	os.WriteFile(fake, []byte(script), 0755)
+	mustWriteExec(t, fake, []byte(script))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	var buf bytes.Buffer
@@ -294,14 +294,14 @@ func TestCmdCompact_EmptyClaudeVersion(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	os.MkdirAll(projectDir, 0755)
-	os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644)
-	os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644)
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
 
 	binDir := t.TempDir()
 	fake := filepath.Join(binDir, "claude")
 	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"\"; exit 0; fi\n"
-	os.WriteFile(fake, []byte(script), 0755)
+	mustWriteExec(t, fake, []byte(script))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	var buf bytes.Buffer
@@ -318,14 +318,14 @@ func TestCmdCompact_MalformedClaudeVersion(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	os.MkdirAll(projectDir, 0755)
-	os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644)
-	os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644)
+	mustMkdirAll(t, projectDir)
+	mustWriteFile(t, filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"))
+	mustWriteFile(t, filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"))
 
 	binDir := t.TempDir()
 	fake := filepath.Join(binDir, "claude")
 	script := "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"not-a-version\"; exit 0; fi\n"
-	os.WriteFile(fake, []byte(script), 0755)
+	mustWriteExec(t, fake, []byte(script))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	var buf bytes.Buffer
@@ -340,11 +340,11 @@ func TestCmdCompact_MalformedClaudeVersion(t *testing.T) {
 
 func TestReadMemoryFiles(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "MEMORY.md"), []byte("memory\n"), 0644)
-	os.WriteFile(filepath.Join(dir, "notes.md"), []byte("notes\n"), 0644)
-	os.WriteFile(filepath.Join(dir, ".repo"), []byte("url\n"), 0644)
-	os.WriteFile(filepath.Join(dir, ".path"), []byte("/some/path\n"), 0644)
-	os.MkdirAll(filepath.Join(dir, "subdir"), 0755)
+	mustWriteFile(t, filepath.Join(dir, "MEMORY.md"), []byte("memory\n"))
+	mustWriteFile(t, filepath.Join(dir, "notes.md"), []byte("notes\n"))
+	mustWriteFile(t, filepath.Join(dir, ".repo"), []byte("url\n"))
+	mustWriteFile(t, filepath.Join(dir, ".path"), []byte("/some/path\n"))
+	mustMkdirAll(t, filepath.Join(dir, "subdir"))
 
 	files, err := readMemoryFiles(dir)
 	if err != nil {

@@ -8,6 +8,27 @@ import (
 	"testing"
 )
 
+func mustWriteFile(t *testing.T, path string, data []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+func mustWriteExec(t *testing.T, path string, data []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, data, 0755); err != nil {
+		t.Fatalf("write exec %s: %v", path, err)
+	}
+}
+
+func mustMkdirAll(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0755); err != nil {
+		t.Fatalf("mkdir %s: %v", path, err)
+	}
+}
+
 func setupGitEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("GIT_AUTHOR_NAME", "Test User")
@@ -83,7 +104,7 @@ func TestReadJSONSettings_NotFound(t *testing.T) {
 
 func TestReadJSONSettings_EmptyFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	os.WriteFile(path, []byte(""), 0644)
+	mustWriteFile(t, path, []byte(""))
 
 	settings, err := readJSONSettings(path)
 	if err != nil {
@@ -96,7 +117,7 @@ func TestReadJSONSettings_EmptyFile(t *testing.T) {
 
 func TestReadJSONSettings_CorruptJSON(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	os.WriteFile(path, []byte("{bad json}"), 0644)
+	mustWriteFile(t, path, []byte("{bad json}"))
 
 	_, err := readJSONSettings(path)
 	if err == nil {
@@ -109,7 +130,7 @@ func TestReadJSONSettings_CorruptJSON(t *testing.T) {
 
 func TestReadJSONSettings_ValidJSON(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	os.WriteFile(path, []byte(`{"key": "value"}`), 0644)
+	mustWriteFile(t, path, []byte(`{"key": "value"}`))
 
 	settings, err := readJSONSettings(path)
 	if err != nil {
@@ -170,7 +191,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 
 	t.Run("appends to existing file with trailing newline", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
-		os.WriteFile(path, []byte(".DS_Store\n"), 0644)
+		mustWriteFile(t, path, []byte(".DS_Store\n"))
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
 			t.Fatal(err)
 		}
@@ -185,7 +206,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 
 	t.Run("appends to file without trailing newline", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
-		os.WriteFile(path, []byte(".DS_Store"), 0644) // no trailing newline
+		mustWriteFile(t, path, []byte(".DS_Store")) // no trailing newline
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
 			t.Fatal(err)
 		}
@@ -201,7 +222,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 
 	t.Run("idempotent", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
-		os.WriteFile(path, []byte("**/.path\n"), 0644)
+		mustWriteFile(t, path, []byte("**/.path\n"))
 		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
 			t.Fatal(err)
 		}
