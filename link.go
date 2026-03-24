@@ -47,7 +47,7 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 
 	remoteURL, err := gitExec(toplevel, "remote", "get-url", "origin")
 	if err != nil {
-		return fmt.Errorf("no remote origin found; dotmem link requires a git remote named \"origin\"")
+		return fmt.Errorf("no remote origin found; dotmem link requires a git remote named \"origin\": %w", err)
 	}
 
 	if slug == "" {
@@ -98,6 +98,9 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 		return err
 	}
 	if strings.TrimSpace(statusOut) != "" {
+		if _, err := gitExec(dir, "add", ".gitignore"); err != nil {
+			return err
+		}
 		if _, err := gitExec(dir, "commit", "-m", "link: update .gitignore for legacy repos", ".gitignore"); err != nil {
 			return err
 		}
