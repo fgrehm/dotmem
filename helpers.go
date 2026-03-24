@@ -30,6 +30,7 @@ func requireInit(dir string) error {
 
 func validateSlug(slug string) error {
 	if slug == "" || slug == "." || slug == ".." ||
+		strings.HasPrefix(slug, "-") ||
 		strings.ContainsAny(slug, "/\\") {
 		return fmt.Errorf("invalid project slug %q", slug)
 	}

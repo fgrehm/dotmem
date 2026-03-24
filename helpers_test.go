@@ -224,6 +224,7 @@ func TestValidateSlug(t *testing.T) {
 		{"..", true},
 		{"../evil", true},
 		{"a/b", true},
+		{"-flag", true},
 	}
 	for _, tt := range tests {
 		err := validateSlug(tt.slug)

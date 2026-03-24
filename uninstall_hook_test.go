@@ -100,7 +100,10 @@ func TestCmdUninstallHook_PreservesOtherHooks(t *testing.T) {
 
 	// Add another Stop hook entry alongside dotmem's.
 	settingsPath := filepath.Join(home, ".claude", "settings.json")
-	settings, _ := readJSONSettings(settingsPath)
+	settings, err := readJSONSettings(settingsPath)
+	if err != nil {
+		t.Fatalf("readJSONSettings: %v", err)
+	}
 	hooks := settings["hooks"].(map[string]any)
 	stopHooks := hooks["Stop"].([]any)
 	stopHooks = append(stopHooks, map[string]any{
@@ -110,7 +113,9 @@ func TestCmdUninstallHook_PreservesOtherHooks(t *testing.T) {
 		},
 	})
 	hooks["Stop"] = stopHooks
-	writeJSONSettings(settingsPath, settings)
+	if err := writeJSONSettings(settingsPath, settings); err != nil {
+		t.Fatalf("writeJSONSettings: %v", err)
+	}
 
 	buf.Reset()
 	if err := cmdUninstallHook(&buf); err != nil {
