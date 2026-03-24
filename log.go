@@ -51,7 +51,10 @@ func cmdLog(w io.Writer, slug string) error {
 
 	projectDir := filepath.Join(dir, slug)
 	if _, err := os.Stat(projectDir); err != nil {
-		return fmt.Errorf("project %q not found in %s", slug, dir)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("project %q not found in %s", slug, dir)
+		}
+		return fmt.Errorf("failed to stat project %q in %s: %w", slug, dir, err)
 	}
 
 	out, err := gitExec(dir, "log", "--oneline", "--", slug+"/")
