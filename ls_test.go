@@ -36,15 +36,15 @@ func TestCmdLs_WithProjects(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "my-project")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range []string{"MEMORY.md", "debugging.md", ".repo"} {
-		if err := os.WriteFile(filepath.Join(projectDir, f), []byte("test\n"), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(projectDir, f), []byte("test\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, ".path"), []byte("/home/user/my-project\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, ".path"), []byte("/home/user/my-project\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -71,10 +71,10 @@ func TestCmdLs_SingleFile(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "solo")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("test\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("test\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -79,10 +79,10 @@ func TestCmdInstallHook_MergesExistingSettings(t *testing.T) {
 	home := fakeHome(t)
 	putDotmemOnPath(t)
 	claudeDir := filepath.Join(home, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(`{"theme": "dark"}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(`{"theme": "dark"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -111,10 +111,10 @@ func TestCmdInstallHook_EmptySettings(t *testing.T) {
 	home := fakeHome(t)
 	putDotmemOnPath(t)
 	claudeDir := filepath.Join(home, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(""), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(""), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -128,10 +128,10 @@ func TestCmdInstallHook_CorruptSettings(t *testing.T) {
 	home := fakeHome(t)
 	putDotmemOnPath(t)
 	claudeDir := filepath.Join(home, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte("not json"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte("not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

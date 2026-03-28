@@ -63,9 +63,9 @@ func mainWorktree(repoDir string) string {
 	if err != nil {
 		return repoDir
 	}
-	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(line, "worktree ") {
-			return strings.TrimPrefix(line, "worktree ")
+	for line := range strings.SplitSeq(out, "\n") {
+		if after, ok := strings.CutPrefix(line, "worktree "); ok {
+			return after
 		}
 	}
 	return repoDir
@@ -112,19 +112,20 @@ func gitExec(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// ensureGitignoreRule appends rule to path if it is not already present.
-// Creates the file if it does not exist.
-func ensureGitignoreRule(path, rule string) error {
+// ensureGitignoreRule appends pathIgnoreRule to path if it is not already
+// present. Creates the file if it does not exist.
+func ensureGitignoreRule(path string) error {
+	const rule = "**/" + pathMarker
 	data, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if strings.TrimSpace(line) == rule {
 			return nil
 		}
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}

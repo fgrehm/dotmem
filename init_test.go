@@ -49,7 +49,7 @@ func TestCmdInit_AlreadyExists(t *testing.T) {
 	setupGitEnv(t)
 	dir := filepath.Join(t.TempDir(), ".mem")
 	t.Setenv("DOTMEM_DIR", dir)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer

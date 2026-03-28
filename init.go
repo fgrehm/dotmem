@@ -30,16 +30,16 @@ func cmdInit(w io.Writer) error {
 		return fmt.Errorf("already initialized at %s", dir)
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".DS_Store\n*.swp\n*~\n**/.path\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(".DS_Store\n*.swp\n*~\n**/.path\n"), 0o644); err != nil {
 		return err
 	}
 
 	readme := "# dotmem\nCentralized AI memory. Managed by [dotmem](https://github.com/fgrehm/dotmem).\n"
-	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(readme), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(readme), 0o644); err != nil {
 		return err
 	}
 

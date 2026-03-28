@@ -52,3 +52,23 @@ When reviewing PRs, check for:
 - `resolveSlug()` matches cwd's main worktree against `.path` files.
 - JSON round-tripped via `map[string]any` to preserve unknown fields.
 - `ensureGitignoreRule(path, rule)` appends a rule if not present. If it modifies the file, commit the change immediately with `git commit -m "..." <file>` to prevent auto-commit sweeping it up.
+
+## Tooling
+
+- Go version: see `go.mod`.
+- Linter: golangci-lint v2, managed as a Go tool dependency. Run `make lint` or
+  `go tool golangci-lint run ./...`. Config in `.golangci.yml`.
+- Formatting: `make fmt` runs gofumpt + goimports via `go tool golangci-lint fmt`.
+- Dead code: `make deadcode` runs `go tool deadcode ./...` (hard gate in CI).
+- Complexity: `make audit` runs gocyclo (informational at 15, hard gate at 30 in CI).
+- Tests: `make test` runs with `-race -shuffle=on`.
+- Pre-commit hook: `.githooks/pre-commit` auto-formats and lints staged files.
+  Run `make setup-hooks` to activate.
+- Release: tag-triggered via GoReleaser. Release notes extracted from `CHANGELOG.md`.
+  See the Releasing section in CLAUDE.md.
+
+## CHANGELOG
+
+When reviewing PRs, verify that `CHANGELOG.md` has an `[Unreleased]` entry for any
+user-facing change (features, fixes, breaking changes). Use
+[Keep a Changelog](https://keepachangelog.com/) format.

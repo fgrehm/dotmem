@@ -1,3 +1,5 @@
 dotmem
 coverage.out
 coverage.html
+dist/
+vendor/

@@ -35,7 +35,7 @@ func TestCmdCommit_NoChanges(t *testing.T) {
 func TestCmdCommit_WithChanges(t *testing.T) {
 	setupGitEnv(t)
 	dir := initDotmem(t)
-	if err := os.WriteFile(filepath.Join(dir, "test.md"), []byte("hello\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "test.md"), []byte("hello\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
@@ -81,7 +81,7 @@ func TestCmdCommit_WithChanges_Debug(t *testing.T) {
 	setupGitEnv(t)
 	t.Setenv("DOTMEM_DEBUG", "1")
 	dir := initDotmem(t)
-	if err := os.WriteFile(filepath.Join(dir, "test.md"), []byte("hello\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "test.md"), []byte("hello\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
