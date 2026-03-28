@@ -33,7 +33,8 @@ build: ## Build the dotmem binary
 	@go build -ldflags "$(LDFLAGS)" -o dist/dotmem .
 	@echo "✓ Built to dist/dotmem"
 
-install: build ## Install dotmem to ~/.local/bin
+install: build ## Install dotmem to ~/.local/bin (symlink)
+	@mkdir -p $(HOME)/.local/bin
 	@ln -sf $(PWD)/dist/dotmem $(HOME)/.local/bin/dotmem
 	@echo "✓ Installed to ~/.local/bin/dotmem"
 
