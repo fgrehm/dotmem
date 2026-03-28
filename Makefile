@@ -34,8 +34,8 @@ build: ## Build the dotmem binary
 	@echo "✓ Built to dist/dotmem"
 
 install: build ## Install dotmem to ~/.local/bin (symlink)
-	@mkdir -p $(HOME)/.local/bin
-	@ln -sf $(PWD)/dist/dotmem $(HOME)/.local/bin/dotmem
+	@mkdir -p "$(HOME)/.local/bin"
+	@ln -sf "$(CURDIR)/dist/dotmem" "$(HOME)/.local/bin/dotmem"
 	@echo "✓ Installed to ~/.local/bin/dotmem"
 
 test: ## Run tests
@@ -76,6 +76,9 @@ deadcode: ## Check for unreachable functions
 	fi; \
 	echo "✓ No dead code found."
 
-audit: ## Run complexity analysis (informational, gocyclo -over 15)
+audit: ## Run complexity and vulnerability checks (informational)
 	@echo "=== Cyclomatic complexity (>15) ==="
 	@go tool gocyclo -over 15 . || true
+	@echo ""
+	@echo "=== Vulnerability check ==="
+	@go tool govulncheck ./... || true
