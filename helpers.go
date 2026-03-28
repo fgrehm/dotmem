@@ -112,7 +112,7 @@ func gitExec(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// ensureGitignoreRule appends pathIgnoreRule to path if it is not already
+// ensureGitignoreRule appends the "**/.path" rule to path if it is not already
 // present. Creates the file if it does not exist.
 func ensureGitignoreRule(path string) error {
 	const rule = "**/" + pathMarker

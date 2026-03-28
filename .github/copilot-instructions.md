@@ -51,7 +51,7 @@ When reviewing PRs, check for:
 - `readMemoryFiles()` must skip `.repo` and `.path`.
 - `resolveSlug()` matches cwd's main worktree against `.path` files.
 - JSON round-tripped via `map[string]any` to preserve unknown fields.
-- `ensureGitignoreRule(path, rule)` appends a rule if not present. If it modifies the file, commit the change immediately with `git commit -m "..." <file>` to prevent auto-commit sweeping it up.
+- `ensureGitignoreRule(path)` appends the `**/.path` rule if not present. If it modifies the file, commit the change immediately with `git commit -m "..." <file>` to prevent auto-commit sweeping it up.
 
 ## Tooling
 
