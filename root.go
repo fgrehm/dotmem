@@ -12,7 +12,7 @@ func newRootCmd() *cobra.Command {
 		Short: "Centralize Claude Code memory files into a single git-tracked repo",
 		Long: `dotmem centralizes Claude Code memory files from all projects into a
 single git repo with automatic versioning via Stop hooks.`,
-		Version:       fmt.Sprintf("%s (commit %s, built %s)", version, commit, buildTime),
+		Version:       fmt.Sprintf("%s (commit %s, built %s)", version, commit, date),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

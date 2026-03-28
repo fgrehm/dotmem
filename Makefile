@@ -9,12 +9,12 @@ DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 ifeq ($(GIT_TAG),)
   VERSION := $(BASE_VERSION)-dev+$(shell date -u +"%Y%m%d%H%M%S")
 else
-  VERSION := $(GIT_TAG)
+  VERSION := $(patsubst v%,%,$(GIT_TAG))
 endif
 
 LDFLAGS := -X main.version=$(VERSION) \
            -X main.commit=$(COMMIT) \
-           -X main.buildTime=$(DATE)
+           -X main.date=$(DATE)
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'

@@ -11,7 +11,7 @@ import (
 var (
 	version   = "dev"
 	commit    = "none"
-	buildTime = "unknown"
+	date      = "unknown"
 )
 
 func main() {
