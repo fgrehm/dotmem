@@ -156,7 +156,7 @@ func cmdCompact(ctx context.Context, w io.Writer, r io.Reader, slug string, forc
 	}
 
 	memoryPath := filepath.Join(projectDir, "MEMORY.md")
-	if err := os.WriteFile(memoryPath, []byte(result.Memory), 0644); err != nil {
+	if err := os.WriteFile(memoryPath, []byte(result.Memory), 0o644); err != nil {
 		return err
 	}
 

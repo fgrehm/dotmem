@@ -10,21 +10,21 @@ import (
 
 func mustWriteFile(t *testing.T, path string, data []byte) {
 	t.Helper()
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
 }
 
 func mustWriteExec(t *testing.T, path string, data []byte) {
 	t.Helper()
-	if err := os.WriteFile(path, data, 0755); err != nil {
+	if err := os.WriteFile(path, data, 0o755); err != nil {
 		t.Fatalf("write exec %s: %v", path, err)
 	}
 }
 
 func mustMkdirAll(t *testing.T, path string) {
 	t.Helper()
-	if err := os.MkdirAll(path, 0755); err != nil {
+	if err := os.MkdirAll(path, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", path, err)
 	}
 }
@@ -65,21 +65,14 @@ func initDotmem(t *testing.T) string {
 
 func chdirTo(t *testing.T, dir string) {
 	t.Helper()
-	orig, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(orig) })
+	t.Chdir(dir)
 }
 
 func putDotmemOnPath(t *testing.T) {
 	t.Helper()
 	binDir := t.TempDir()
 	fake := filepath.Join(binDir, "dotmem")
-	if err := os.WriteFile(fake, []byte("#!/bin/sh\nexit 0\n"), 0755); err != nil {
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -181,7 +174,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 
 	t.Run("creates file with rule", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
-		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+		if err := ensureGitignoreRule(path); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(readFile(t, path), "**/.path") {
@@ -192,7 +185,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 	t.Run("appends to existing file with trailing newline", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
 		mustWriteFile(t, path, []byte(".DS_Store\n"))
-		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+		if err := ensureGitignoreRule(path); err != nil {
 			t.Fatal(err)
 		}
 		got := readFile(t, path)
@@ -207,7 +200,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 	t.Run("appends to file without trailing newline", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
 		mustWriteFile(t, path, []byte(".DS_Store")) // no trailing newline
-		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+		if err := ensureGitignoreRule(path); err != nil {
 			t.Fatal(err)
 		}
 		got := readFile(t, path)
@@ -223,7 +216,7 @@ func TestEnsureGitignoreRule(t *testing.T) {
 	t.Run("idempotent", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), ".gitignore")
 		mustWriteFile(t, path, []byte("**/.path\n"))
-		if err := ensureGitignoreRule(path, "**/.path"); err != nil {
+		if err := ensureGitignoreRule(path); err != nil {
 			t.Fatal(err)
 		}
 		count := strings.Count(readFile(t, path), "**/.path")

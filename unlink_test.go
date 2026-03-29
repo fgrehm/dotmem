@@ -41,10 +41,10 @@ func TestCmdUnlink_PreservesOtherSettings(t *testing.T) {
 	chdirTo(t, repoDir)
 
 	claudeDir := filepath.Join(repoDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"autoMemoryDirectory": "/some/path", "theme": "dark"}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"autoMemoryDirectory": "/some/path", "theme": "dark"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

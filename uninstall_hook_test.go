@@ -56,10 +56,10 @@ func TestCmdUninstallHook_PreservesOtherSettings(t *testing.T) {
 	putDotmemOnPath(t)
 
 	claudeDir := filepath.Join(home, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(`{"theme": "dark"}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(`{"theme": "dark"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -143,11 +143,11 @@ func TestCmdUninstallHook_PreservesUnrecognizedHooksShape(t *testing.T) {
 
 	// Write a Stop hook entry with a non-[]any "hooks" field.
 	claudeDir := filepath.Join(home, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	raw := `{"hooks":{"Stop":[{"matcher":"","hooks":"not-an-array"},{"matcher":"","hooks":[{"type":"command","command":"dotmem commit"}]}]}}`
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(raw), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(raw), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

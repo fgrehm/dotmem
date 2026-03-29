@@ -244,10 +244,10 @@ func TestCmdLink_MergesExistingSettings(t *testing.T) {
 	chdirTo(t, repoDir)
 
 	claudeDir := filepath.Join(repoDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"someOtherKey": "value"}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"someOtherKey": "value"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -280,10 +280,10 @@ func TestCmdLink_EmptySettingsFile(t *testing.T) {
 	chdirTo(t, repoDir)
 
 	claudeDir := filepath.Join(repoDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(""), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(""), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -300,10 +300,10 @@ func TestCmdLink_CorruptSettings(t *testing.T) {
 	chdirTo(t, repoDir)
 
 	claudeDir := filepath.Join(repoDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte("not json"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte("not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -324,10 +324,10 @@ func TestCmdLink_OverwritePrompt_NonTTY(t *testing.T) {
 	chdirTo(t, repoDir)
 
 	claudeDir := filepath.Join(repoDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"autoMemoryDirectory": "/some/other/path"}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"autoMemoryDirectory": "/some/other/path"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -345,10 +345,10 @@ func TestCmdLink_OverwriteForce(t *testing.T) {
 	chdirTo(t, repoDir)
 
 	claudeDir := filepath.Join(repoDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"autoMemoryDirectory": "/some/other/path"}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), []byte(`{"autoMemoryDirectory": "/some/other/path"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -377,7 +377,7 @@ func TestCmdLink_DerivedSlug(t *testing.T) {
 
 	parent := t.TempDir()
 	repoDir := filepath.Join(parent, "my-project")
-	if err := os.MkdirAll(repoDir, 0755); err != nil {
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{

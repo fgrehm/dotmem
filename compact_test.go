@@ -28,13 +28,13 @@ func fakeClaude(t *testing.T, result compactResult) {
 
 	// Write the JSON to a file and cat it, avoiding shell string interpretation.
 	dataFile := filepath.Join(binDir, "response.json")
-	if err := os.WriteFile(dataFile, append(resultEvent, '\n'), 0644); err != nil {
+	if err := os.WriteFile(dataFile, append(resultEvent, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	fake := filepath.Join(binDir, "claude")
 	script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"99.0.0 (Claude Code)\"; exit 0; fi\ncat %s\n", dataFile)
-	if err := os.WriteFile(fake, []byte(script), 0755); err != nil {
+	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -59,11 +59,11 @@ func TestCmdCompact_NoFiles(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	// Only .repo exists.
-	if err := os.WriteFile(filepath.Join(projectDir, ".repo"), []byte("url\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, ".repo"), []byte("url\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -80,10 +80,10 @@ func TestCmdCompact_SingleFile(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -119,13 +119,13 @@ func TestCmdCompact_NonTTYAborts(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -148,16 +148,16 @@ func TestCmdCompact_WithForce(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Old Memory\nold stuff\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Old Memory\nold stuff\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "gotchas.md"), []byte("# Gotchas\nsome gotcha\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "gotchas.md"), []byte("# Gotchas\nsome gotcha\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "SPEC.md"), []byte("# Spec\nkeep this\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "SPEC.md"), []byte("# Spec\nkeep this\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -224,19 +224,19 @@ func TestCmdCompact_PathTraversal(t *testing.T) {
 	setupGitEnv(t)
 	dotmemDir := initDotmem(t)
 	projectDir := filepath.Join(dotmemDir, "myapp")
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "MEMORY.md"), []byte("# Memory\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "notes.md"), []byte("# Notes\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a file outside projectDir that a traversal attack would target.
 	outsideFile := filepath.Join(dotmemDir, "important.txt")
-	if err := os.WriteFile(outsideFile, []byte("do not delete\n"), 0644); err != nil {
+	if err := os.WriteFile(outsideFile, []byte("do not delete\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -74,10 +74,10 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 			}
 		}
 	} else {
-		if err := os.MkdirAll(projectDir, 0755); err != nil {
+		if err := os.MkdirAll(projectDir, 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(repoFile, []byte(remoteURL+"\n"), 0644); err != nil {
+		if err := os.WriteFile(repoFile, []byte(remoteURL+"\n"), 0o644); err != nil {
 			return err
 		}
 		if _, err := gitExec(dir, "add", slug); err != nil {
@@ -89,11 +89,11 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	}
 
 	pathFile := filepath.Join(projectDir, pathMarker)
-	if err := os.WriteFile(pathFile, []byte(canonical+"\n"), 0644); err != nil {
+	if err := os.WriteFile(pathFile, []byte(canonical+"\n"), 0o644); err != nil {
 		return err
 	}
 	gitignorePath := filepath.Join(dir, ".gitignore")
-	if err := ensureGitignoreRule(gitignorePath, "**/.path"); err != nil {
+	if err := ensureGitignoreRule(gitignorePath); err != nil {
 		return err
 	}
 	statusOut, err := gitExec(dir, "status", "--porcelain", ".gitignore")
@@ -110,7 +110,7 @@ func cmdLink(w io.Writer, r io.Reader, slug string, force bool) error {
 	}
 
 	claudeDir := filepath.Join(toplevel, ".claude")
-	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
 		return err
 	}
 
