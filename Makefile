@@ -1,4 +1,4 @@
-.PHONY: help build test install clean lint fmt coverage vendor setup-hooks deadcode audit
+.PHONY: help build test install clean lint fmt coverage vendor setup-hooks deadcode audit govulncheck
 
 # Build variables
 BASE_VERSION := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
@@ -75,6 +75,9 @@ deadcode: ## Check for unreachable functions
 		exit 1; \
 	fi; \
 	echo "✓ No dead code found."
+
+govulncheck: ## Run vulnerability check
+	@go tool govulncheck ./...
 
 audit: ## Run complexity and vulnerability checks (informational)
 	@echo "=== Cyclomatic complexity (>15) ==="
