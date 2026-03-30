@@ -145,7 +145,7 @@ func TestCmdBrowse(t *testing.T) {
 
 	t.Run("no filters", func(t *testing.T) {
 		var buf bytes.Buffer
-		if err := cmdBrowse(&buf, "", ""); err != nil {
+		if err := cmdBrowsePlain(&buf, "", ""); err != nil {
 			t.Fatalf("cmdBrowse: %v", err)
 		}
 		out := buf.String()
@@ -183,7 +183,7 @@ func TestCmdBrowse(t *testing.T) {
 
 	t.Run("filter by type", func(t *testing.T) {
 		var buf bytes.Buffer
-		if err := cmdBrowse(&buf, "feedback", ""); err != nil {
+		if err := cmdBrowsePlain(&buf, "feedback", ""); err != nil {
 			t.Fatalf("cmdBrowse: %v", err)
 		}
 		out := buf.String()
@@ -198,7 +198,7 @@ func TestCmdBrowse(t *testing.T) {
 
 	t.Run("filter by project", func(t *testing.T) {
 		var buf bytes.Buffer
-		if err := cmdBrowse(&buf, "", "beta"); err != nil {
+		if err := cmdBrowsePlain(&buf, "", "beta"); err != nil {
 			t.Fatalf("cmdBrowse: %v", err)
 		}
 		out := buf.String()
@@ -213,7 +213,7 @@ func TestCmdBrowse(t *testing.T) {
 
 	t.Run("no matches", func(t *testing.T) {
 		var buf bytes.Buffer
-		if err := cmdBrowse(&buf, "user", ""); err != nil {
+		if err := cmdBrowsePlain(&buf, "user", ""); err != nil {
 			t.Fatalf("cmdBrowse: %v", err)
 		}
 		out := buf.String()

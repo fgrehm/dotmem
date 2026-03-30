@@ -67,28 +67,89 @@ func collectMemories(dotmemDir string) ([]memoryFile, error) {
 	return memories, nil
 }
 
+func filterMemories(memories []memoryFile, typeFilter, projectFilter string) []memoryFile {
+	if typeFilter == "" && projectFilter == "" {
+		return memories
+	}
+	var filtered []memoryFile
+	for _, m := range memories {
+		if typeFilter != "" {
+			mt := m.Meta.Type
+			if mt == "" {
+				mt = "untyped"
+			}
+			if mt != typeFilter {
+				continue
+			}
+		}
+		if projectFilter != "" && m.Project != projectFilter {
+			continue
+		}
+		filtered = append(filtered, m)
+	}
+	return filtered
+}
+
+func sortMemories(memories []memoryFile) {
+	sort.Slice(memories, func(i, j int) bool {
+		ti, tj := memoryTypeKey(memories[i]), memoryTypeKey(memories[j])
+		if ti != tj {
+			return ti < tj
+		}
+		if memories[i].Project != memories[j].Project {
+			return memories[i].Project < memories[j].Project
+		}
+		return displayName(memories[i]) < displayName(memories[j])
+	})
+}
+
+func memoryTypeKey(m memoryFile) int {
+	t := m.Meta.Type
+	for i, o := range typeOrder {
+		if o == t {
+			return i
+		}
+	}
+	if t == "" {
+		return len(typeOrder) + 1
+	}
+	return len(typeOrder)
+}
+
 // typeOrder defines the display order for memory types.
 var typeOrder = []string{"user", "feedback", "project", "reference"}
+
+func displayName(m memoryFile) string {
+	if m.Meta.Name != "" {
+		return m.Meta.Name
+	}
+	return m.File
+}
 
 func newBrowseCmd() *cobra.Command {
 	var typeFilter string
 	var projectFilter string
+	var plain bool
 
 	cmd := &cobra.Command{
 		Use:   "browse",
 		Short: "Browse memories across all projects, grouped by type",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmdBrowse(cmd.OutOrStdout(), typeFilter, projectFilter)
+			if plain {
+				return cmdBrowsePlain(cmd.OutOrStdout(), typeFilter, projectFilter)
+			}
+			return cmdBrowseTUI(typeFilter, projectFilter)
 		},
 	}
 
 	cmd.Flags().StringVarP(&typeFilter, "type", "t", "", "filter by memory type (user, feedback, project, reference)")
 	cmd.Flags().StringVarP(&projectFilter, "project", "p", "", "filter by project slug")
+	cmd.Flags().BoolVar(&plain, "plain", false, "plain text output (no TUI)")
 
 	return cmd
 }
 
-func cmdBrowse(w io.Writer, typeFilter, projectFilter string) error {
+func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string) error {
 	dir, err := dotmemDir()
 	if err != nil {
 		return err
@@ -102,26 +163,7 @@ func cmdBrowse(w io.Writer, typeFilter, projectFilter string) error {
 		return err
 	}
 
-	// Apply filters.
-	if typeFilter != "" || projectFilter != "" {
-		var filtered []memoryFile
-		for _, m := range memories {
-			if typeFilter != "" {
-				mt := m.Meta.Type
-				if mt == "" {
-					mt = "untyped"
-				}
-				if mt != typeFilter {
-					continue
-				}
-			}
-			if projectFilter != "" && m.Project != projectFilter {
-				continue
-			}
-			filtered = append(filtered, m)
-		}
-		memories = filtered
-	}
+	memories = filterMemories(memories, typeFilter, projectFilter)
 
 	// Group by type.
 	groups := make(map[string][]memoryFile)
@@ -153,7 +195,6 @@ func cmdBrowse(w io.Writer, typeFilter, projectFilter string) error {
 			printed++
 		}
 	}
-	// Unknown types (alphabetical).
 	var unknown []string
 	for t := range groups {
 		if !seen[t] && t != "untyped" {
@@ -165,7 +206,6 @@ func cmdBrowse(w io.Writer, typeFilter, projectFilter string) error {
 		printGroup(w, t, groups[t], printed > 0)
 		printed++
 	}
-	// Untyped last.
 	if entries, ok := groups["untyped"]; ok {
 		printGroup(w, "untyped", entries, printed > 0)
 		printed++
@@ -186,11 +226,4 @@ func printGroup(w io.Writer, typeName string, entries []memoryFile, needBlank bo
 	for _, m := range entries {
 		fmt.Fprintf(w, "  %-14s %s\n", m.Project, displayName(m))
 	}
-}
-
-func displayName(m memoryFile) string {
-	if m.Meta.Name != "" {
-		return m.Meta.Name
-	}
-	return m.File
 }
