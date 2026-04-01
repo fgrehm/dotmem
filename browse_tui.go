@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"charm.land/bubbles/v2/list"
@@ -9,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/glamour/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // -- styles --
@@ -34,6 +36,70 @@ var (
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#626262"))
 )
+
+// -- wrapping delegate --
+
+// wrappingDelegate is a list delegate that wraps long titles and descriptions
+// instead of truncating them with ellipsis.
+type wrappingDelegate struct {
+	list.DefaultDelegate
+}
+
+func newWrappingDelegate() wrappingDelegate {
+	d := list.NewDefaultDelegate()
+	d.SetHeight(3)
+	d.SetSpacing(1)
+	return wrappingDelegate{DefaultDelegate: d}
+}
+
+func (d wrappingDelegate) Height() int  { return d.DefaultDelegate.Height() }
+func (d wrappingDelegate) Spacing() int { return d.DefaultDelegate.Spacing() }
+
+func (d wrappingDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	di, ok := item.(list.DefaultItem)
+	if !ok {
+		return
+	}
+	if m.Width() <= 0 {
+		return
+	}
+
+	s := &d.Styles
+	padLeft := s.NormalTitle.GetPaddingLeft()
+	textWidth := m.Width() - padLeft - s.NormalTitle.GetPaddingRight()
+
+	title := ansi.Wordwrap(di.Title(), textWidth, " ")
+	desc := ansi.Wordwrap(di.Description(), textWidth, " ")
+
+	// Clamp to delegate height.
+	title = clampLines(title, 1)
+	desc = clampLines(desc, d.Height()-1)
+
+	isSelected := index == m.Index()
+	emptyFilter := m.FilterState() == list.Filtering && m.FilterValue() == ""
+
+	switch {
+	case emptyFilter:
+		title = s.DimmedTitle.Render(title)
+		desc = s.DimmedDesc.Render(desc)
+	case isSelected && m.FilterState() != list.Filtering:
+		title = s.SelectedTitle.Render(title)
+		desc = s.SelectedDesc.Render(desc)
+	default:
+		title = s.NormalTitle.Render(title)
+		desc = s.NormalDesc.Render(desc)
+	}
+
+	fmt.Fprintf(w, "%s\n%s", title, desc) //nolint:errcheck
+}
+
+func clampLines(s string, max int) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > max {
+		lines = lines[:max]
+	}
+	return strings.Join(lines, "\n")
+}
 
 func typeBadge(t string) string {
 	if t == "" {
@@ -86,15 +152,15 @@ type browseModel struct {
 	ready    bool
 }
 
-func newBrowseModel(memories []memoryFile) browseModel {
+func newBrowseModel(memories []memoryFile, title string) browseModel {
 	items := make([]list.Item, len(memories))
 	for i, m := range memories {
 		items[i] = memoryItem{memory: m}
 	}
 
-	delegate := list.NewDefaultDelegate()
+	delegate := newWrappingDelegate()
 	l := list.New(items, delegate, 0, 0)
-	l.Title = "Memories"
+	l.Title = title
 	l.SetShowStatusBar(true)
 	l.SetFilteringEnabled(true)
 
@@ -236,7 +302,7 @@ func renderDetail(mem memoryFile, width int) string {
 
 // -- entry point --
 
-func cmdBrowseTUI(typeFilter, projectFilter string) error {
+func cmdBrowseTUI(typeFilter, projectFilter string, allProjects bool) error {
 	dir, err := dotmemDir()
 	if err != nil {
 		return err
@@ -244,6 +310,8 @@ func cmdBrowseTUI(typeFilter, projectFilter string) error {
 	if err := requireInit(dir); err != nil {
 		return err
 	}
+
+	projectFilter = resolveProjectFilter(dir, projectFilter, allProjects)
 
 	memories, err := collectMemories(dir)
 	if err != nil {
@@ -258,7 +326,12 @@ func cmdBrowseTUI(typeFilter, projectFilter string) error {
 		return nil
 	}
 
-	p := tea.NewProgram(newBrowseModel(memories))
+	title := "Memories"
+	if projectFilter != "" {
+		title = projectFilter
+	}
+
+	p := tea.NewProgram(newBrowseModel(memories, title))
 	_, err = p.Run()
 	return err
 }

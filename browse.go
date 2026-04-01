@@ -129,6 +129,7 @@ func displayName(m memoryFile) string {
 func newBrowseCmd() *cobra.Command {
 	var typeFilter string
 	var projectFilter string
+	var allProjects bool
 	var plain bool
 
 	cmd := &cobra.Command{
@@ -136,20 +137,38 @@ func newBrowseCmd() *cobra.Command {
 		Short: "Browse memories across all projects, grouped by type",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if plain {
-				return cmdBrowsePlain(cmd.OutOrStdout(), typeFilter, projectFilter)
+				return cmdBrowsePlain(cmd.OutOrStdout(), typeFilter, projectFilter, allProjects)
 			}
-			return cmdBrowseTUI(typeFilter, projectFilter)
+			return cmdBrowseTUI(typeFilter, projectFilter, allProjects)
 		},
 	}
 
 	cmd.Flags().StringVarP(&typeFilter, "type", "t", "", "filter by memory type (user, feedback, project, reference)")
 	cmd.Flags().StringVarP(&projectFilter, "project", "p", "", "filter by project slug")
+	cmd.Flags().BoolVarP(&allProjects, "all", "a", false, "show memories from all projects (default: current project only)")
 	cmd.Flags().BoolVar(&plain, "plain", false, "plain text output (no TUI)")
 
 	return cmd
 }
 
-func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string) error {
+// resolveProjectFilter returns the slug to filter by based on flags and cwd.
+// If --project is set explicitly, that wins. If --all is set, no filter.
+// Otherwise, tries to auto-detect the current project; falls back to all.
+func resolveProjectFilter(dotmemDir, projectFilter string, allProjects bool) string {
+	if projectFilter != "" {
+		return projectFilter
+	}
+	if allProjects {
+		return ""
+	}
+	slug, err := resolveSlug(dotmemDir)
+	if err != nil {
+		return ""
+	}
+	return slug
+}
+
+func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string, allProjects bool) error {
 	dir, err := dotmemDir()
 	if err != nil {
 		return err
@@ -157,6 +176,8 @@ func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string) error {
 	if err := requireInit(dir); err != nil {
 		return err
 	}
+
+	projectFilter = resolveProjectFilter(dir, projectFilter, allProjects)
 
 	memories, err := collectMemories(dir)
 	if err != nil {
