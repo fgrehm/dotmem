@@ -138,6 +138,7 @@ func newBrowseCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "browse",
 		Short: "Browse memories across all projects, grouped by type",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if plain {
 				return cmdBrowsePlain(cmd.OutOrStdout(), typeFilter, projectFilter, allProjects)

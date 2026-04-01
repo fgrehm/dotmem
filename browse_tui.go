@@ -250,10 +250,12 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					mem := m.selected
 					dir := m.dotmemDir
 					return m, func() tea.Msg {
-						if err := deleteMemory(dir, mem); err == nil {
-							if cerr := commitMemoryChange(dir, mem.Project, mem.File, "browse: delete"); cerr != nil {
-								fmt.Fprintf(os.Stderr, "dotmem: commit after delete: %v\n", cerr)
-							}
+						if err := deleteMemory(dir, mem); err != nil {
+							fmt.Fprintf(os.Stderr, "dotmem: delete memory: %v\n", err)
+							return nil
+						}
+						if cerr := commitMemoryChange(dir, mem.Project, mem.File, "browse: delete"); cerr != nil {
+							fmt.Fprintf(os.Stderr, "dotmem: commit after delete: %v\n", cerr)
 						}
 						return deleteCommittedMsg{index: idx}
 					}
@@ -284,6 +286,9 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					editor = "vi"
 				}
 				editorFields := strings.Fields(editor)
+				if len(editorFields) == 0 {
+					editorFields = []string{"vi"}
+				}
 				cmdArgs := make([]string, len(editorFields)-1, len(editorFields))
 				copy(cmdArgs, editorFields[1:])
 				cmdArgs = append(cmdArgs, filePath)
