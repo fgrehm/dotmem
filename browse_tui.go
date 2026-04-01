@@ -69,6 +69,9 @@ func (d wrappingDelegate) Render(w io.Writer, m list.Model, index int, item list
 	s := &d.Styles
 	padLeft := s.NormalTitle.GetPaddingLeft()
 	textWidth := m.Width() - padLeft - s.NormalTitle.GetPaddingRight()
+	if textWidth <= 0 {
+		textWidth = 1
+	}
 
 	title := ansi.Wordwrap(di.Title(), textWidth, " ")
 	title = clampLines(title, 1)
@@ -444,15 +447,24 @@ func cascadeMemoryIndex(dotmemDir, project, file string) error {
 }
 
 // commitMemoryChange stages and commits changes to a single project's memory file.
+// MEMORY.md is included only when it exists, to avoid pathspec errors in projects
+// that were linked before the index was created.
 func commitMemoryChange(dotmemDir, project, file, msg string) error {
 	filePath := filepath.Join(project, file)
 	indexPath := filepath.Join(project, "MEMORY.md")
-	// Stage the memory file (may be deleted or modified) and MEMORY.md.
-	if _, err := gitExec(dotmemDir, "add", filePath, indexPath); err != nil {
+
+	paths := []string{filePath}
+	if _, err := os.Stat(filepath.Join(dotmemDir, indexPath)); err == nil {
+		paths = append(paths, indexPath)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat memory index: %w", err)
+	}
+
+	if _, err := gitExec(dotmemDir, append([]string{"add"}, paths...)...); err != nil {
 		return fmt.Errorf("git add: %w", err)
 	}
 	commitMsg := msg + ": " + project + "/" + file
-	if _, err := gitExec(dotmemDir, "commit", "-m", commitMsg, "--", filePath, indexPath); err != nil {
+	if _, err := gitExec(dotmemDir, append([]string{"commit", "-m", commitMsg, "--"}, paths...)...); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
 	return nil

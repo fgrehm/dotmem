@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 )
@@ -133,7 +134,7 @@ func TestCmdBrowsePlainCurrentProject(t *testing.T) {
 	dotmem := initDotmem(t)
 
 	// Create a real git repo so resolveSlug can use git rev-parse.
-	repoDir := makeTempRepo(t, "file:///dev/null")
+	repoDir := makeTempRepo(t, t.TempDir())
 	canonicalPath := mainWorktree(repoDir)
 
 	// Project alpha linked to repoDir.
@@ -260,4 +261,118 @@ func TestCmdBrowse(t *testing.T) {
 			t.Errorf("expected 'no memories found' in:\n%s", out)
 		}
 	})
+}
+
+func TestDeleteMemory(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	proj := dotmem + "/alpha"
+	mustMkdirAll(t, proj)
+	mustWriteFile(t, proj+"/.repo", []byte("git@github.com:user/alpha.git"))
+	mustWriteFile(t, proj+"/feedback.md", []byte("---\nname: Test\ntype: feedback\n---\n\nContent.\n"))
+	mustWriteFile(t, proj+"/MEMORY.md", []byte("# Memory\n\n- [Test](feedback.md) -- a test entry\n"))
+
+	mem := memoryFile{Project: "alpha", File: "feedback.md"}
+	if err := deleteMemory(dotmem, mem); err != nil {
+		t.Fatalf("deleteMemory: %v", err)
+	}
+
+	// File should be gone.
+	if _, err := os.Stat(proj + "/feedback.md"); !os.IsNotExist(err) {
+		t.Error("expected feedback.md to be deleted")
+	}
+
+	// MEMORY.md should no longer reference the file.
+	data, err := os.ReadFile(proj + "/MEMORY.md")
+	if err != nil {
+		t.Fatalf("read MEMORY.md: %v", err)
+	}
+	if strings.Contains(string(data), "feedback.md") {
+		t.Errorf("expected MEMORY.md to not reference feedback.md:\n%s", data)
+	}
+}
+
+func TestDeleteMemoryNoIndex(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	proj := dotmem + "/alpha"
+	mustMkdirAll(t, proj)
+	mustWriteFile(t, proj+"/.repo", []byte("git@github.com:user/alpha.git"))
+	mustWriteFile(t, proj+"/feedback.md", []byte("---\nname: Test\ntype: feedback\n---\n\nContent.\n"))
+	// No MEMORY.md.
+
+	mem := memoryFile{Project: "alpha", File: "feedback.md"}
+	if err := deleteMemory(dotmem, mem); err != nil {
+		t.Fatalf("deleteMemory without MEMORY.md: %v", err)
+	}
+
+	if _, err := os.Stat(proj + "/feedback.md"); !os.IsNotExist(err) {
+		t.Error("expected feedback.md to be deleted")
+	}
+}
+
+func TestCommitMemoryChange(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	proj := dotmem + "/alpha"
+	mustMkdirAll(t, proj)
+	mustWriteFile(t, proj+"/.repo", []byte("git@github.com:user/alpha.git"))
+
+	// Commit initial state so there's a base.
+	if _, err := gitExec(dotmem, "add", "alpha"); err != nil {
+		t.Fatalf("git add: %v", err)
+	}
+	if _, err := gitExec(dotmem, "commit", "-m", "link: add alpha"); err != nil {
+		t.Fatalf("git commit: %v", err)
+	}
+
+	mustWriteFile(t, proj+"/feedback.md", []byte("---\nname: Test\ntype: feedback\n---\n\nContent.\n"))
+	mustWriteFile(t, proj+"/MEMORY.md", []byte("# Memory\n\n- [Test](feedback.md) -- entry\n"))
+
+	if err := commitMemoryChange(dotmem, "alpha", "feedback.md", "browse: edit"); err != nil {
+		t.Fatalf("commitMemoryChange: %v", err)
+	}
+
+	// Verify a commit was made with the right message.
+	out, err := gitExec(dotmem, "log", "--oneline", "-1")
+	if err != nil {
+		t.Fatalf("git log: %v", err)
+	}
+	if !strings.Contains(out, "browse: edit: alpha/feedback.md") {
+		t.Errorf("unexpected commit message: %s", out)
+	}
+}
+
+func TestCommitMemoryChangeNoIndex(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	proj := dotmem + "/alpha"
+	mustMkdirAll(t, proj)
+	mustWriteFile(t, proj+"/.repo", []byte("git@github.com:user/alpha.git"))
+
+	if _, err := gitExec(dotmem, "add", "alpha"); err != nil {
+		t.Fatalf("git add: %v", err)
+	}
+	if _, err := gitExec(dotmem, "commit", "-m", "link: add alpha"); err != nil {
+		t.Fatalf("git commit: %v", err)
+	}
+
+	// No MEMORY.md - commit should still succeed.
+	mustWriteFile(t, proj+"/feedback.md", []byte("---\nname: Test\ntype: feedback\n---\n\nContent.\n"))
+
+	if err := commitMemoryChange(dotmem, "alpha", "feedback.md", "browse: edit"); err != nil {
+		t.Fatalf("commitMemoryChange without MEMORY.md: %v", err)
+	}
+
+	out, err := gitExec(dotmem, "log", "--oneline", "-1")
+	if err != nil {
+		t.Fatalf("git log: %v", err)
+	}
+	if !strings.Contains(out, "browse: edit: alpha/feedback.md") {
+		t.Errorf("unexpected commit message: %s", out)
+	}
 }
