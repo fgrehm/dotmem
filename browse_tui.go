@@ -137,6 +137,7 @@ func (i memoryItem) FilterValue() string {
 
 type (
 	editorFinishedMsg  struct{ err error }
+	editCommittedMsg   struct{ err error }
 	deleteCommittedMsg struct{ index int }
 )
 
@@ -219,10 +220,18 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = m.list.SetItem(idx, memoryItem{memory: m.selected})
 		// Refresh viewport content.
 		m.viewport.SetContent(renderDetail(m.selected, m.width))
-		// Commit the change.
-		go func() {
-			commitMemoryChange(m.dotmemDir, m.selected.Project, m.selected.File, "browse: edit")
-		}()
+		// Commit via tea.Cmd to sequence within the update loop.
+		dotmemDir := m.dotmemDir
+		project := m.selected.Project
+		file := m.selected.File
+		return m, func() tea.Msg {
+			return editCommittedMsg{err: commitMemoryChange(dotmemDir, project, file, "browse: edit")}
+		}
+
+	case editCommittedMsg:
+		if msg.err != nil {
+			fmt.Fprintf(os.Stderr, "dotmem: commit after edit: %v\n", msg.err)
+		}
 		return m, nil
 
 	case deleteCommittedMsg:
@@ -242,7 +251,9 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					dir := m.dotmemDir
 					return m, func() tea.Msg {
 						if err := deleteMemory(dir, mem); err == nil {
-							commitMemoryChange(dir, mem.Project, mem.File, "browse: delete")
+							if cerr := commitMemoryChange(dir, mem.Project, mem.File, "browse: delete"); cerr != nil {
+								fmt.Fprintf(os.Stderr, "dotmem: commit after delete: %v\n", cerr)
+							}
 						}
 						return deleteCommittedMsg{index: idx}
 					}
@@ -267,9 +278,16 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				filePath := filepath.Join(m.dotmemDir, m.selected.Project, m.selected.File)
 				editor := os.Getenv("EDITOR")
 				if editor == "" {
+					editor = os.Getenv("VISUAL")
+				}
+				if editor == "" {
 					editor = "vi"
 				}
-				return m, tea.ExecProcess(exec.Command(editor, filePath), func(err error) tea.Msg {
+				editorFields := strings.Fields(editor)
+				cmdArgs := make([]string, len(editorFields)-1, len(editorFields))
+				copy(cmdArgs, editorFields[1:])
+				cmdArgs = append(cmdArgs, filePath)
+				return m, tea.ExecProcess(exec.Command(editorFields[0], cmdArgs...), func(err error) tea.Msg {
 					return editorFinishedMsg{err: err}
 				})
 			}
@@ -391,39 +409,53 @@ func deleteMemory(dotmemDir string, mem memoryFile) error {
 	if err := os.Remove(filePath); err != nil {
 		return err
 	}
-	cascadeMemoryIndex(dotmemDir, mem.Project, mem.File)
-	return nil
+	return cascadeMemoryIndex(dotmemDir, mem.Project, mem.File)
 }
 
 // cascadeMemoryIndex removes any line in MEMORY.md that links to the deleted file.
-func cascadeMemoryIndex(dotmemDir, project, file string) {
+func cascadeMemoryIndex(dotmemDir, project, file string) error {
 	indexPath := filepath.Join(dotmemDir, project, "MEMORY.md")
 	data, err := os.ReadFile(indexPath)
 	if err != nil {
-		return
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read memory index: %w", err)
 	}
 	// Match markdown link lines referencing this file: - [...](file.md) ...
 	pattern := regexp.MustCompile(`(?m)^[^\n]*\(` + regexp.QuoteMeta(file) + `\)[^\n]*\n?`)
 	updated := pattern.ReplaceAll(data, nil)
 	if len(updated) == len(data) {
-		return
+		return nil
 	}
-	_ = os.WriteFile(indexPath, updated, 0o644) //nolint:errcheck
+	tmpPath := indexPath + ".tmp"
+	if err := os.WriteFile(tmpPath, updated, 0o644); err != nil {
+		return fmt.Errorf("write temp memory index: %w", err)
+	}
+	if err := os.Rename(tmpPath, indexPath); err != nil {
+		return fmt.Errorf("replace memory index: %w", err)
+	}
+	return nil
 }
 
 // commitMemoryChange stages and commits changes to a single project's memory file.
-func commitMemoryChange(dotmemDir, project, file, msg string) {
-	projectDir := filepath.Join(dotmemDir, project)
+func commitMemoryChange(dotmemDir, project, file, msg string) error {
 	filePath := filepath.Join(project, file)
 	indexPath := filepath.Join(project, "MEMORY.md")
 	// Stage the memory file (may be deleted or modified) and MEMORY.md.
-	_, _ = gitExec(dotmemDir, "add", filePath, indexPath)                                              //nolint:errcheck
-	_, _ = gitExec(dotmemDir, "commit", "-m", msg+": "+projectDir+"/"+file, "--", filePath, indexPath) //nolint:errcheck
+	if _, err := gitExec(dotmemDir, "add", filePath, indexPath); err != nil {
+		return fmt.Errorf("git add: %w", err)
+	}
+	commitMsg := msg + ": " + project + "/" + file
+	if _, err := gitExec(dotmemDir, "commit", "-m", commitMsg, "--", filePath, indexPath); err != nil {
+		return fmt.Errorf("git commit: %w", err)
+	}
+	return nil
 }
 
 // -- entry point --
 
-func cmdBrowseTUI(typeFilter, projectFilter string, allProjects bool) error {
+func cmdBrowseTUI(w io.Writer, typeFilter, projectFilter string, allProjects bool) error {
 	dir, err := dotmemDir()
 	if err != nil {
 		return err
@@ -432,7 +464,10 @@ func cmdBrowseTUI(typeFilter, projectFilter string, allProjects bool) error {
 		return err
 	}
 
-	projectFilter = resolveProjectFilter(dir, projectFilter, allProjects)
+	projectFilter, err = resolveProjectFilter(dir, projectFilter, allProjects)
+	if err != nil {
+		return err
+	}
 
 	memories, err := collectMemories(dir)
 	if err != nil {
@@ -443,7 +478,7 @@ func cmdBrowseTUI(typeFilter, projectFilter string, allProjects bool) error {
 	sortMemories(memories)
 
 	if len(memories) == 0 {
-		fmt.Println("no memories found")
+		fmt.Fprintln(w, "no memories found")
 		return nil
 	}
 

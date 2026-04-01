@@ -142,7 +142,7 @@ func newBrowseCmd() *cobra.Command {
 			if plain {
 				return cmdBrowsePlain(cmd.OutOrStdout(), typeFilter, projectFilter, allProjects)
 			}
-			return cmdBrowseTUI(typeFilter, projectFilter, allProjects)
+			return cmdBrowseTUI(cmd.OutOrStdout(), typeFilter, projectFilter, allProjects)
 		},
 	}
 
@@ -155,20 +155,25 @@ func newBrowseCmd() *cobra.Command {
 }
 
 // resolveProjectFilter returns the slug to filter by based on flags and cwd.
-// If --project is set explicitly, that wins. If --all is set, no filter.
-// Otherwise, tries to auto-detect the current project; falls back to all.
-func resolveProjectFilter(dotmemDir, projectFilter string, allProjects bool) string {
+// If --project is set explicitly, that wins (after normalization/validation).
+// If --all is set, no filter. Otherwise, tries to auto-detect the current
+// project; falls back to all on failure.
+func resolveProjectFilter(dotmemDir, projectFilter string, allProjects bool) (string, error) {
 	if projectFilter != "" {
-		return projectFilter
+		normalized := normalizeSlug(projectFilter)
+		if err := validateSlug(normalized); err != nil {
+			return "", fmt.Errorf("invalid project slug %q: %w", projectFilter, err)
+		}
+		return normalized, nil
 	}
 	if allProjects {
-		return ""
+		return "", nil
 	}
 	slug, err := resolveSlug(dotmemDir)
 	if err != nil {
-		return ""
+		return "", nil
 	}
-	return slug
+	return slug, nil
 }
 
 func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string, allProjects bool) error {
@@ -180,7 +185,10 @@ func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string, allProjects b
 		return err
 	}
 
-	projectFilter = resolveProjectFilter(dir, projectFilter, allProjects)
+	projectFilter, err = resolveProjectFilter(dir, projectFilter, allProjects)
+	if err != nil {
+		return err
+	}
 
 	memories, err := collectMemories(dir)
 	if err != nil {

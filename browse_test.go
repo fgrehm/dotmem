@@ -128,6 +128,44 @@ func TestCollectMemories(t *testing.T) {
 	}
 }
 
+func TestCmdBrowsePlainCurrentProject(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	// Create a real git repo so resolveSlug can use git rev-parse.
+	repoDir := makeTempRepo(t, "file:///dev/null")
+	canonicalPath := mainWorktree(repoDir)
+
+	// Project alpha linked to repoDir.
+	projA := dotmem + "/alpha"
+	mustMkdirAll(t, projA)
+	mustWriteFile(t, projA+"/.repo", []byte("git@github.com:user/alpha.git"))
+	mustWriteFile(t, projA+"/.path", []byte(canonicalPath+"\n"))
+	mustWriteFile(t, projA+"/feedback.md", []byte("---\nname: Alpha feedback\ntype: feedback\n---\n\nAlpha content.\n"))
+
+	// Project beta with no .path (unlinked).
+	projB := dotmem + "/beta"
+	mustMkdirAll(t, projB)
+	mustWriteFile(t, projB+"/.repo", []byte("git@github.com:user/beta.git"))
+	mustWriteFile(t, projB+"/notes.md", []byte("---\nname: Beta notes\ntype: user\n---\n\nBeta content.\n"))
+
+	// Chdir into repoDir so resolveSlug matches alpha.
+	chdirTo(t, repoDir)
+
+	var buf bytes.Buffer
+	if err := cmdBrowsePlain(&buf, "", "", false); err != nil {
+		t.Fatalf("cmdBrowsePlain: %v", err)
+	}
+	out := buf.String()
+
+	if !strings.Contains(out, "Alpha feedback") {
+		t.Errorf("expected alpha memory in output:\n%s", out)
+	}
+	if strings.Contains(out, "Beta notes") {
+		t.Errorf("expected beta memory to be filtered out:\n%s", out)
+	}
+}
+
 func TestCmdBrowse(t *testing.T) {
 	setupGitEnv(t)
 	dotmem := initDotmem(t)
