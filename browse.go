@@ -55,6 +55,9 @@ func collectMemories(dotmemDir string) ([]memoryFile, error) {
 			return nil, fmt.Errorf("%s: %w", slug, err)
 		}
 		for name, content := range files {
+			if name == "MEMORY.md" {
+				continue
+			}
 			meta, body := parseFrontmatter(content)
 			memories = append(memories, memoryFile{
 				Project: slug,

@@ -3,6 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"charm.land/bubbles/v2/list"
@@ -33,14 +37,12 @@ var (
 			Foreground(lipgloss.Color("#9CA3AF")).
 			PaddingLeft(1)
 
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#626262"))
+	helpStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262"))
+	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F87171"))
 )
 
 // -- wrapping delegate --
 
-// wrappingDelegate is a list delegate that wraps long titles and descriptions
-// instead of truncating them with ellipsis.
 type wrappingDelegate struct {
 	list.DefaultDelegate
 }
@@ -69,11 +71,8 @@ func (d wrappingDelegate) Render(w io.Writer, m list.Model, index int, item list
 	textWidth := m.Width() - padLeft - s.NormalTitle.GetPaddingRight()
 
 	title := ansi.Wordwrap(di.Title(), textWidth, " ")
-	desc := ansi.Wordwrap(di.Description(), textWidth, " ")
-
-	// Clamp to delegate height.
 	title = clampLines(title, 1)
-	desc = clampLines(desc, d.Height()-1)
+	desc := ansi.Truncate(di.Description(), textWidth, "…")
 
 	isSelected := index == m.Index()
 	emptyFilter := m.FilterState() == list.Filtering && m.FilterValue() == ""
@@ -127,12 +126,19 @@ func (i memoryItem) Description() string {
 	if desc == "" {
 		desc = i.memory.File
 	}
-	return fmt.Sprintf("%-14s %s", i.memory.Project, desc)
+	return i.memory.Project + "  " + desc
 }
 
 func (i memoryItem) FilterValue() string {
 	return displayName(i.memory) + " " + i.memory.Project + " " + i.memory.Meta.Type + " " + i.memory.Meta.Description
 }
+
+// -- messages --
+
+type (
+	editorFinishedMsg  struct{ err error }
+	deleteCommittedMsg struct{ index int }
+)
 
 // -- model --
 
@@ -144,15 +150,18 @@ const (
 )
 
 type browseModel struct {
-	list     list.Model
-	viewport viewport.Model
-	view     browseView
-	width    int
-	height   int
-	ready    bool
+	list       list.Model
+	viewport   viewport.Model
+	view       browseView
+	selected   memoryFile
+	dotmemDir  string
+	width      int
+	height     int
+	ready      bool
+	confirming bool // waiting for y/n on delete
 }
 
-func newBrowseModel(memories []memoryFile, title string) browseModel {
+func newBrowseModel(memories []memoryFile, title, dotmemDir string) browseModel {
 	items := make([]list.Item, len(memories))
 	for i, m := range memories {
 		items[i] = memoryItem{memory: m}
@@ -165,7 +174,8 @@ func newBrowseModel(memories []memoryFile, title string) browseModel {
 	l.SetFilteringEnabled(true)
 
 	return browseModel{
-		list: l,
+		list:      l,
+		dotmemDir: dotmemDir,
 	}
 }
 
@@ -186,14 +196,84 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case editorFinishedMsg:
+		if msg.err != nil {
+			return m, nil
+		}
+		// Re-read the file and update the list item.
+		filePath := filepath.Join(m.dotmemDir, m.selected.Project, m.selected.File)
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return m, nil
+		}
+		content := string(data)
+		meta, body := parseFrontmatter(content)
+		m.selected = memoryFile{
+			Project: m.selected.Project,
+			File:    m.selected.File,
+			Meta:    meta,
+			Body:    body,
+		}
+		// Update the list item.
+		idx := m.list.Index()
+		_ = m.list.SetItem(idx, memoryItem{memory: m.selected})
+		// Refresh viewport content.
+		m.viewport.SetContent(renderDetail(m.selected, m.width))
+		// Commit the change.
+		go func() {
+			commitMemoryChange(m.dotmemDir, m.selected.Project, m.selected.File, "browse: edit")
+		}()
+		return m, nil
+
+	case deleteCommittedMsg:
+		m.list.RemoveItem(msg.index)
+		m.view = listView
+		return m, nil
+
 	case tea.KeyPressMsg:
 		key := msg.String()
 
 		if m.view == detailView {
-			if key == "esc" || key == "backspace" || key == "q" {
-				m.view = listView
+			if m.confirming {
+				switch key {
+				case "y", "Y":
+					idx := m.list.Index()
+					mem := m.selected
+					dir := m.dotmemDir
+					return m, func() tea.Msg {
+						if err := deleteMemory(dir, mem); err == nil {
+							commitMemoryChange(dir, mem.Project, mem.File, "browse: delete")
+						}
+						return deleteCommittedMsg{index: idx}
+					}
+				default:
+					m.confirming = false
+				}
 				return m, nil
 			}
+
+			switch key {
+			case "esc", "backspace":
+				m.view = listView
+				m.confirming = false
+				return m, nil
+			case "q":
+				m.view = listView
+				return m, nil
+			case "d":
+				m.confirming = true
+				return m, nil
+			case "e":
+				filePath := filepath.Join(m.dotmemDir, m.selected.Project, m.selected.File)
+				editor := os.Getenv("EDITOR")
+				if editor == "" {
+					editor = "vi"
+				}
+				return m, tea.ExecProcess(exec.Command(editor, filePath), func(err error) tea.Msg {
+					return editorFinishedMsg{err: err}
+				})
+			}
+
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
 			return m, cmd
@@ -214,11 +294,13 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !ok {
 				return m, nil
 			}
+			m.selected = selected.memory
+			m.confirming = false
 			m.viewport = viewport.New(
 				viewport.WithWidth(m.width),
 				viewport.WithHeight(m.height-2),
 			)
-			m.viewport.SetContent(renderDetail(selected.memory, m.width))
+			m.viewport.SetContent(renderDetail(m.selected, m.width))
 			m.view = detailView
 			return m, nil
 		}
@@ -245,7 +327,12 @@ func (m browseModel) View() tea.View {
 	}
 
 	if m.view == detailView {
-		footer := helpStyle.Render("esc: back  q: quit  ↑↓: scroll")
+		var footer string
+		if m.confirming {
+			footer = warningStyle.Render("Delete this memory? ") + helpStyle.Render("y") + warningStyle.Render("/") + helpStyle.Render("n")
+		} else {
+			footer = helpStyle.Render("esc: back  d: delete  e: edit  ↑↓: scroll")
+		}
 		v.SetContent(m.viewport.View() + "\n" + footer)
 		return v
 	}
@@ -259,11 +346,9 @@ func (m browseModel) View() tea.View {
 func renderDetail(mem memoryFile, width int) string {
 	var b strings.Builder
 
-	// Header.
 	b.WriteString(detailHeaderStyle.Render(displayName(mem)))
 	b.WriteString("\n")
 
-	// Meta line.
 	var meta []string
 	meta = append(meta, typeBadge(mem.Meta.Type))
 	meta = append(meta, mem.Project+"/"+mem.File)
@@ -277,7 +362,6 @@ func renderDetail(mem memoryFile, width int) string {
 
 	b.WriteString("\n")
 
-	// Body rendered as markdown.
 	body := strings.TrimSpace(mem.Body)
 	if body != "" {
 		w := max(width-2, 40)
@@ -298,6 +382,43 @@ func renderDetail(mem memoryFile, width int) string {
 	}
 
 	return b.String()
+}
+
+// -- delete --
+
+func deleteMemory(dotmemDir string, mem memoryFile) error {
+	filePath := filepath.Join(dotmemDir, mem.Project, mem.File)
+	if err := os.Remove(filePath); err != nil {
+		return err
+	}
+	cascadeMemoryIndex(dotmemDir, mem.Project, mem.File)
+	return nil
+}
+
+// cascadeMemoryIndex removes any line in MEMORY.md that links to the deleted file.
+func cascadeMemoryIndex(dotmemDir, project, file string) {
+	indexPath := filepath.Join(dotmemDir, project, "MEMORY.md")
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		return
+	}
+	// Match markdown link lines referencing this file: - [...](file.md) ...
+	pattern := regexp.MustCompile(`(?m)^[^\n]*\(` + regexp.QuoteMeta(file) + `\)[^\n]*\n?`)
+	updated := pattern.ReplaceAll(data, nil)
+	if len(updated) == len(data) {
+		return
+	}
+	_ = os.WriteFile(indexPath, updated, 0o644) //nolint:errcheck
+}
+
+// commitMemoryChange stages and commits changes to a single project's memory file.
+func commitMemoryChange(dotmemDir, project, file, msg string) {
+	projectDir := filepath.Join(dotmemDir, project)
+	filePath := filepath.Join(project, file)
+	indexPath := filepath.Join(project, "MEMORY.md")
+	// Stage the memory file (may be deleted or modified) and MEMORY.md.
+	_, _ = gitExec(dotmemDir, "add", filePath, indexPath)                                              //nolint:errcheck
+	_, _ = gitExec(dotmemDir, "commit", "-m", msg+": "+projectDir+"/"+file, "--", filePath, indexPath) //nolint:errcheck
 }
 
 // -- entry point --
@@ -331,7 +452,7 @@ func cmdBrowseTUI(typeFilter, projectFilter string, allProjects bool) error {
 		title = projectFilter
 	}
 
-	p := tea.NewProgram(newBrowseModel(memories, title))
+	p := tea.NewProgram(newBrowseModel(memories, title, dir))
 	_, err = p.Run()
 	return err
 }
