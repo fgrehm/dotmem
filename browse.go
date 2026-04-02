@@ -150,7 +150,7 @@ func newBrowseCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "browse",
-		Short: "Browse memories across all projects, grouped by type",
+		Short: "Browse memories for the current project, grouped by type",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validTypeFilter(typeFilter); err != nil {

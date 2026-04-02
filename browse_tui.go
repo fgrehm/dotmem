@@ -73,8 +73,7 @@ func (d wrappingDelegate) Render(w io.Writer, m list.Model, index int, item list
 		textWidth = 1
 	}
 
-	title := ansi.Wordwrap(di.Title(), textWidth, " ")
-	title = clampLines(title, 1)
+	title := ansi.Truncate(di.Title(), textWidth, "…")
 	desc := ansi.Truncate(di.Description(), textWidth, "…")
 
 	isSelected := index == m.Index()
@@ -93,14 +92,6 @@ func (d wrappingDelegate) Render(w io.Writer, m list.Model, index int, item list
 	}
 
 	fmt.Fprintf(w, "%s\n%s", title, desc) //nolint:errcheck
-}
-
-func clampLines(s string, max int) string {
-	lines := strings.Split(s, "\n")
-	if len(lines) > max {
-		lines = lines[:max]
-	}
-	return strings.Join(lines, "\n")
 }
 
 func typeBadge(t string) string {
@@ -504,7 +495,8 @@ func commitMemoryChange(dotmemDir, project, file, msg string) error {
 	}
 
 	// Skip commit when nothing was staged (e.g. editor exited without changes).
-	if _, err := gitExec(dotmemDir, "diff", "--cached", "--quiet"); err == nil {
+	diffArgs := append([]string{"diff", "--cached", "--quiet", "--"}, paths...)
+	if _, err := gitExec(dotmemDir, diffArgs...); err == nil {
 		return nil
 	}
 
