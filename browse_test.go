@@ -493,3 +493,21 @@ func TestCascadeMemoryIndexBulletOnly(t *testing.T) {
 		t.Errorf("expected prose line to be preserved:\n%s", out)
 	}
 }
+
+func TestValidTypeFilter(t *testing.T) {
+	// Valid types should pass.
+	for _, typ := range []string{"", "user", "feedback", "project", "reference", "untyped"} {
+		if err := validTypeFilter(typ); err != nil {
+			t.Errorf("validTypeFilter(%q) = %v, want nil", typ, err)
+		}
+	}
+
+	// Invalid type should fail.
+	err := validTypeFilter("banana")
+	if err == nil {
+		t.Fatal("expected error for invalid type")
+	}
+	if !strings.Contains(err.Error(), "unknown memory type") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}

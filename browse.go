@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -122,6 +123,18 @@ func memoryTypeKey(m memoryFile) int {
 // typeOrder defines the display order for memory types.
 var typeOrder = []string{"user", "feedback", "project", "reference"}
 
+// validTypeFilter returns an error if the type filter is non-empty and not a
+// recognized memory type (including "untyped").
+func validTypeFilter(t string) error {
+	if t == "" || t == "untyped" {
+		return nil
+	}
+	if !slices.Contains(typeOrder, t) {
+		return fmt.Errorf("unknown memory type %q; valid types: %s, untyped", t, strings.Join(typeOrder, ", "))
+	}
+	return nil
+}
+
 func displayName(m memoryFile) string {
 	if m.Meta.Name != "" {
 		return m.Meta.Name
@@ -140,6 +153,9 @@ func newBrowseCmd() *cobra.Command {
 		Short: "Browse memories across all projects, grouped by type",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validTypeFilter(typeFilter); err != nil {
+				return err
+			}
 			if plain {
 				return cmdBrowsePlain(cmd.OutOrStdout(), typeFilter, projectFilter, allProjects)
 			}
@@ -207,8 +223,10 @@ func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string, allProjects b
 	}
 
 	memories = filterMemories(memories, typeFilter, projectFilter)
+	sortMemories(memories)
 
-	// Group by type.
+	// Group by type (entries within each group are already sorted by
+	// sortMemories: type key, then project, then display name).
 	groups := make(map[string][]memoryFile)
 	for _, m := range memories {
 		t := m.Meta.Type
@@ -216,16 +234,6 @@ func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string, allProjects b
 			t = "untyped"
 		}
 		groups[t] = append(groups[t], m)
-	}
-
-	// Sort entries within each group by project, then display name.
-	for _, entries := range groups {
-		sort.Slice(entries, func(i, j int) bool {
-			if entries[i].Project != entries[j].Project {
-				return entries[i].Project < entries[j].Project
-			}
-			return displayName(entries[i]) < displayName(entries[j])
-		})
 	}
 
 	// Print groups in fixed order, then any unknown types, then untyped.
