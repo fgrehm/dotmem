@@ -38,7 +38,7 @@ func parseFrontmatter(content string) (memoryMeta, string) {
 	return meta, string(rest)
 }
 
-func collectMemories(dotmemDir string) ([]memoryFile, error) {
+func collectMemories(dotmemDir, projectFilter string) ([]memoryFile, error) {
 	entries, err := os.ReadDir(dotmemDir)
 	if err != nil {
 		return nil, err
@@ -50,6 +50,9 @@ func collectMemories(dotmemDir string) ([]memoryFile, error) {
 			continue
 		}
 		slug := e.Name()
+		if projectFilter != "" && slug != projectFilter {
+			continue
+		}
 		projectDir := filepath.Join(dotmemDir, slug)
 		files, err := readMemoryFiles(projectDir)
 		if err != nil {
@@ -71,22 +74,17 @@ func collectMemories(dotmemDir string) ([]memoryFile, error) {
 	return memories, nil
 }
 
-func filterMemories(memories []memoryFile, typeFilter, projectFilter string) []memoryFile {
-	if typeFilter == "" && projectFilter == "" {
+func filterMemories(memories []memoryFile, typeFilter string) []memoryFile {
+	if typeFilter == "" {
 		return memories
 	}
 	var filtered []memoryFile
 	for _, m := range memories {
-		if typeFilter != "" {
-			mt := m.Meta.Type
-			if mt == "" {
-				mt = "untyped"
-			}
-			if mt != typeFilter {
-				continue
-			}
+		mt := m.Meta.Type
+		if mt == "" {
+			mt = "untyped"
 		}
-		if projectFilter != "" && m.Project != projectFilter {
+		if mt != typeFilter {
 			continue
 		}
 		filtered = append(filtered, m)
@@ -217,12 +215,12 @@ func cmdBrowsePlain(w io.Writer, typeFilter, projectFilter string, allProjects b
 		return err
 	}
 
-	memories, err := collectMemories(dir)
+	memories, err := collectMemories(dir, projectFilter)
 	if err != nil {
 		return err
 	}
 
-	memories = filterMemories(memories, typeFilter, projectFilter)
+	memories = filterMemories(memories, typeFilter)
 	sortMemories(memories)
 
 	// Group by type (entries within each group are already sorted by

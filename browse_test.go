@@ -95,7 +95,7 @@ func TestCollectMemories(t *testing.T) {
 	mustWriteFile(t, projB+"/.repo", []byte("git@github.com:user/beta.git"))
 	mustWriteFile(t, projB+"/notes.md", []byte("# Notes\n\nPlain markdown.\n"))
 
-	memories, err := collectMemories(dotmem)
+	memories, err := collectMemories(dotmem, "")
 	if err != nil {
 		t.Fatalf("collectMemories: %v", err)
 	}

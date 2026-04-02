@@ -240,7 +240,7 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case deleteCommittedMsg:
 		if msg.err != nil {
 			m.confirming = false
-			m.statusErr = fmt.Sprintf("delete: %v", msg.err)
+			m.statusErr = msg.err.Error()
 			return m, nil
 		}
 		m.list.RemoveItem(msg.index)
@@ -526,12 +526,12 @@ func cmdBrowseTUI(w io.Writer, typeFilter, projectFilter string, allProjects boo
 		return err
 	}
 
-	memories, err := collectMemories(dir)
+	memories, err := collectMemories(dir, projectFilter)
 	if err != nil {
 		return err
 	}
 
-	memories = filterMemories(memories, typeFilter, projectFilter)
+	memories = filterMemories(memories, typeFilter)
 	sortMemories(memories)
 
 	if len(memories) == 0 {
