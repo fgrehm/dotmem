@@ -165,6 +165,16 @@ func resolveProjectFilter(dotmemDir, projectFilter string, allProjects bool) (st
 		if err := validateSlug(normalized); err != nil {
 			return "", fmt.Errorf("invalid project slug %q: %w", projectFilter, err)
 		}
+		info, err := os.Stat(filepath.Join(dotmemDir, normalized))
+		if err != nil {
+			if os.IsNotExist(err) {
+				return "", fmt.Errorf("project not found: %s", normalized)
+			}
+			return "", fmt.Errorf("stat project: %w", err)
+		}
+		if !info.IsDir() {
+			return "", fmt.Errorf("project not found: %s", normalized)
+		}
 		return normalized, nil
 	}
 	if allProjects {

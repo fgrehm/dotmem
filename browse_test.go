@@ -376,3 +376,120 @@ func TestCommitMemoryChangeNoIndex(t *testing.T) {
 		t.Errorf("unexpected commit message: %s", out)
 	}
 }
+
+func TestCommitMemoryChangeAfterDelete(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	proj := dotmem + "/alpha"
+	mustMkdirAll(t, proj)
+	mustWriteFile(t, proj+"/.repo", []byte("git@github.com:user/alpha.git"))
+	mustWriteFile(t, proj+"/feedback.md", []byte("---\nname: Test\ntype: feedback\n---\n\nContent.\n"))
+	mustWriteFile(t, proj+"/MEMORY.md", []byte("# Memory\n\n- [Test](feedback.md) -- entry\n"))
+
+	// Commit initial state.
+	if _, err := gitExec(dotmem, "add", "alpha"); err != nil {
+		t.Fatalf("git add: %v", err)
+	}
+	if _, err := gitExec(dotmem, "commit", "-m", "link: add alpha"); err != nil {
+		t.Fatalf("git commit: %v", err)
+	}
+
+	// Delete the file then commit (simulates the browse delete flow).
+	if err := deleteMemory(dotmem, memoryFile{Project: "alpha", File: "feedback.md"}); err != nil {
+		t.Fatalf("deleteMemory: %v", err)
+	}
+	if err := commitMemoryChange(dotmem, "alpha", "feedback.md", "browse: delete"); err != nil {
+		t.Fatalf("commitMemoryChange after delete: %v", err)
+	}
+
+	out, err := gitExec(dotmem, "log", "--oneline", "-1")
+	if err != nil {
+		t.Fatalf("git log: %v", err)
+	}
+	if !strings.Contains(out, "browse: delete: alpha/feedback.md") {
+		t.Errorf("unexpected commit message: %s", out)
+	}
+}
+
+func TestCommitMemoryChangeNoop(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	proj := dotmem + "/alpha"
+	mustMkdirAll(t, proj)
+	mustWriteFile(t, proj+"/.repo", []byte("git@github.com:user/alpha.git"))
+	mustWriteFile(t, proj+"/feedback.md", []byte("---\nname: Test\ntype: feedback\n---\n\nContent.\n"))
+
+	if _, err := gitExec(dotmem, "add", "alpha"); err != nil {
+		t.Fatalf("git add: %v", err)
+	}
+	if _, err := gitExec(dotmem, "commit", "-m", "link: add alpha"); err != nil {
+		t.Fatalf("git commit: %v", err)
+	}
+
+	// Commit without modifying anything - should be a no-op, not an error.
+	if err := commitMemoryChange(dotmem, "alpha", "feedback.md", "browse: edit"); err != nil {
+		t.Fatalf("commitMemoryChange no-op should succeed: %v", err)
+	}
+
+	// HEAD should still be the original commit.
+	out, err := gitExec(dotmem, "log", "--oneline", "-1")
+	if err != nil {
+		t.Fatalf("git log: %v", err)
+	}
+	if !strings.Contains(out, "link: add alpha") {
+		t.Errorf("no-op commit should not have created a new commit: %s", out)
+	}
+}
+
+func TestResolveProjectFilterInvalidSlug(t *testing.T) {
+	dotmem := t.TempDir()
+	_, err := resolveProjectFilter(dotmem, "../escape", false)
+	if err == nil {
+		t.Fatal("expected error for invalid slug")
+	}
+	if !strings.Contains(err.Error(), "invalid project slug") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveProjectFilterNotFound(t *testing.T) {
+	setupGitEnv(t)
+	dotmem := initDotmem(t)
+
+	_, err := resolveProjectFilter(dotmem, "nonexistent", false)
+	if err == nil {
+		t.Fatal("expected error for nonexistent project")
+	}
+	if !strings.Contains(err.Error(), "project not found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCascadeMemoryIndexBulletOnly(t *testing.T) {
+	dir := t.TempDir()
+	proj := dir + "/alpha"
+	mustMkdirAll(t, proj)
+	content := "# Memory\n\n- [Test](feedback.md) -- entry\nSome prose mentioning (feedback.md) in text.\n"
+	mustWriteFile(t, proj+"/MEMORY.md", []byte(content))
+
+	if err := cascadeMemoryIndex(dir, "alpha", "feedback.md"); err != nil {
+		t.Fatalf("cascadeMemoryIndex: %v", err)
+	}
+
+	data, err := os.ReadFile(proj + "/MEMORY.md")
+	if err != nil {
+		t.Fatalf("read MEMORY.md: %v", err)
+	}
+	out := string(data)
+
+	// Bullet line should be removed.
+	if strings.Contains(out, "- [Test]") {
+		t.Errorf("expected bullet line to be removed:\n%s", out)
+	}
+	// Prose line should be preserved.
+	if !strings.Contains(out, "Some prose mentioning") {
+		t.Errorf("expected prose line to be preserved:\n%s", out)
+	}
+}

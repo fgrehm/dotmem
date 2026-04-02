@@ -141,7 +141,10 @@ func (i memoryItem) FilterValue() string {
 type (
 	editorFinishedMsg  struct{ err error }
 	editCommittedMsg   struct{ err error }
-	deleteCommittedMsg struct{ index int }
+	deleteCommittedMsg struct {
+		index int
+		err   error
+	}
 )
 
 // -- model --
@@ -162,7 +165,8 @@ type browseModel struct {
 	width      int
 	height     int
 	ready      bool
-	confirming bool // waiting for y/n on delete
+	confirming bool   // waiting for y/n on delete
+	statusErr  string // transient error shown in footer
 }
 
 func newBrowseModel(memories []memoryFile, title, dotmemDir string) browseModel {
@@ -202,12 +206,14 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case editorFinishedMsg:
 		if msg.err != nil {
+			m.statusErr = fmt.Sprintf("editor: %v", msg.err)
 			return m, nil
 		}
 		// Re-read the file and update the list item.
 		filePath := filepath.Join(m.dotmemDir, m.selected.Project, m.selected.File)
 		data, err := os.ReadFile(filePath)
 		if err != nil {
+			m.statusErr = fmt.Sprintf("read: %v", err)
 			return m, nil
 		}
 		content := string(data)
@@ -220,7 +226,10 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Update the list item.
 		idx := m.list.Index()
-		_ = m.list.SetItem(idx, memoryItem{memory: m.selected})
+		if err := m.list.SetItem(idx, memoryItem{memory: m.selected}); err != nil {
+			m.statusErr = fmt.Sprintf("update list: %v", err)
+			return m, nil
+		}
 		// Refresh viewport content.
 		m.viewport.SetContent(renderDetail(m.selected, m.width))
 		// Commit via tea.Cmd to sequence within the update loop.
@@ -233,76 +242,25 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case editCommittedMsg:
 		if msg.err != nil {
-			fmt.Fprintf(os.Stderr, "dotmem: commit after edit: %v\n", msg.err)
+			m.statusErr = fmt.Sprintf("commit: %v", msg.err)
 		}
 		return m, nil
 
 	case deleteCommittedMsg:
+		if msg.err != nil {
+			m.confirming = false
+			m.statusErr = fmt.Sprintf("delete: %v", msg.err)
+			return m, nil
+		}
 		m.list.RemoveItem(msg.index)
 		m.view = listView
 		return m, nil
 
 	case tea.KeyPressMsg:
-		key := msg.String()
+		m.statusErr = "" // clear transient error on any key
 
 		if m.view == detailView {
-			if m.confirming {
-				switch key {
-				case "y", "Y":
-					idx := m.list.Index()
-					mem := m.selected
-					dir := m.dotmemDir
-					return m, func() tea.Msg {
-						if err := deleteMemory(dir, mem); err != nil {
-							fmt.Fprintf(os.Stderr, "dotmem: delete memory: %v\n", err)
-							return nil
-						}
-						if cerr := commitMemoryChange(dir, mem.Project, mem.File, "browse: delete"); cerr != nil {
-							fmt.Fprintf(os.Stderr, "dotmem: commit after delete: %v\n", cerr)
-						}
-						return deleteCommittedMsg{index: idx}
-					}
-				default:
-					m.confirming = false
-				}
-				return m, nil
-			}
-
-			switch key {
-			case "esc", "backspace":
-				m.view = listView
-				m.confirming = false
-				return m, nil
-			case "q":
-				m.view = listView
-				return m, nil
-			case "d":
-				m.confirming = true
-				return m, nil
-			case "e":
-				filePath := filepath.Join(m.dotmemDir, m.selected.Project, m.selected.File)
-				editor := os.Getenv("EDITOR")
-				if editor == "" {
-					editor = os.Getenv("VISUAL")
-				}
-				if editor == "" {
-					editor = "vi"
-				}
-				editorFields := strings.Fields(editor)
-				if len(editorFields) == 0 {
-					editorFields = []string{"vi"}
-				}
-				cmdArgs := make([]string, len(editorFields)-1, len(editorFields))
-				copy(cmdArgs, editorFields[1:])
-				cmdArgs = append(cmdArgs, filePath)
-				return m, tea.ExecProcess(exec.Command(editorFields[0], cmdArgs...), func(err error) tea.Msg {
-					return editorFinishedMsg{err: err}
-				})
-			}
-
-			var cmd tea.Cmd
-			m.viewport, cmd = m.viewport.Update(msg)
-			return m, cmd
+			return m.updateDetailKey(msg)
 		}
 
 		// List view keys.
@@ -310,7 +268,7 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 
-		switch key {
+		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "q":
@@ -343,6 +301,67 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m browseModel) updateDetailKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	if m.confirming {
+		switch key {
+		case "y", "Y":
+			idx := m.list.Index()
+			mem := m.selected
+			dir := m.dotmemDir
+			return m, func() tea.Msg {
+				if err := deleteMemory(dir, mem); err != nil {
+					return deleteCommittedMsg{index: idx, err: fmt.Errorf("delete: %w", err)}
+				}
+				if err := commitMemoryChange(dir, mem.Project, mem.File, "browse: delete"); err != nil {
+					return deleteCommittedMsg{index: idx, err: fmt.Errorf("commit: %w", err)}
+				}
+				return deleteCommittedMsg{index: idx}
+			}
+		default:
+			m.confirming = false
+		}
+		return m, nil
+	}
+
+	switch key {
+	case "esc", "backspace":
+		m.view = listView
+		m.confirming = false
+		return m, nil
+	case "q":
+		m.view = listView
+		return m, nil
+	case "d":
+		m.confirming = true
+		return m, nil
+	case "e":
+		filePath := filepath.Join(m.dotmemDir, m.selected.Project, m.selected.File)
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = os.Getenv("VISUAL")
+		}
+		if editor == "" {
+			editor = "vi"
+		}
+		editorFields := strings.Fields(editor)
+		if len(editorFields) == 0 {
+			editorFields = []string{"vi"}
+		}
+		cmdArgs := make([]string, len(editorFields)-1, len(editorFields))
+		copy(cmdArgs, editorFields[1:])
+		cmdArgs = append(cmdArgs, filePath)
+		return m, tea.ExecProcess(exec.Command(editorFields[0], cmdArgs...), func(err error) tea.Msg {
+			return editorFinishedMsg{err: err}
+		})
+	}
+
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
 func (m browseModel) View() tea.View {
 	var v tea.View
 	v.AltScreen = true
@@ -354,9 +373,12 @@ func (m browseModel) View() tea.View {
 
 	if m.view == detailView {
 		var footer string
-		if m.confirming {
+		switch {
+		case m.statusErr != "":
+			footer = warningStyle.Render(m.statusErr)
+		case m.confirming:
 			footer = warningStyle.Render("Delete this memory? ") + helpStyle.Render("y") + warningStyle.Render("/") + helpStyle.Render("n")
-		} else {
+		default:
 			footer = helpStyle.Render("esc: back  d: delete  e: edit  ↑↓: scroll")
 		}
 		v.SetContent(m.viewport.View() + "\n" + footer)
@@ -430,8 +452,8 @@ func cascadeMemoryIndex(dotmemDir, project, file string) error {
 		}
 		return fmt.Errorf("read memory index: %w", err)
 	}
-	// Match markdown link lines referencing this file: - [...](file.md) ...
-	pattern := regexp.MustCompile(`(?m)^[^\n]*\(` + regexp.QuoteMeta(file) + `\)[^\n]*\n?`)
+	// Match markdown bullet lines linking to this file: - [...](file.md) ...
+	pattern := regexp.MustCompile(`(?m)^[ \t]*- .*?\(` + regexp.QuoteMeta(file) + `\)[^\n]*\n?`)
 	updated := pattern.ReplaceAll(data, nil)
 	if len(updated) == len(data) {
 		return nil
@@ -447,24 +469,45 @@ func cascadeMemoryIndex(dotmemDir, project, file string) error {
 }
 
 // commitMemoryChange stages and commits changes to a single project's memory file.
+// Uses git add -u for deleted files (so the removal is staged correctly).
 // MEMORY.md is included only when it exists, to avoid pathspec errors in projects
 // that were linked before the index was created.
+// Returns nil without committing when there are no staged changes (e.g. editor
+// exited without modifying the file).
 func commitMemoryChange(dotmemDir, project, file, msg string) error {
 	filePath := filepath.Join(project, file)
 	indexPath := filepath.Join(project, "MEMORY.md")
 
-	paths := []string{filePath}
+	// Stage the memory file. Use git add -u when the file has been deleted
+	// so the removal is recorded instead of causing a pathspec error.
+	if _, err := os.Stat(filepath.Join(dotmemDir, filePath)); os.IsNotExist(err) {
+		if _, err := gitExec(dotmemDir, "add", "-u", "--", filePath); err != nil {
+			return fmt.Errorf("git add -u: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("stat memory file: %w", err)
+	} else {
+		if _, err := gitExec(dotmemDir, "add", "--", filePath); err != nil {
+			return fmt.Errorf("git add: %w", err)
+		}
+	}
+
+	// Stage MEMORY.md when it exists.
 	if _, err := os.Stat(filepath.Join(dotmemDir, indexPath)); err == nil {
-		paths = append(paths, indexPath)
+		if _, err := gitExec(dotmemDir, "add", "--", indexPath); err != nil {
+			return fmt.Errorf("git add index: %w", err)
+		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("stat memory index: %w", err)
 	}
 
-	if _, err := gitExec(dotmemDir, append([]string{"add"}, paths...)...); err != nil {
-		return fmt.Errorf("git add: %w", err)
+	// Skip commit when nothing was staged (e.g. editor exited without changes).
+	if _, err := gitExec(dotmemDir, "diff", "--cached", "--quiet"); err == nil {
+		return nil
 	}
+
 	commitMsg := msg + ": " + project + "/" + file
-	if _, err := gitExec(dotmemDir, append([]string{"commit", "-m", commitMsg, "--"}, paths...)...); err != nil {
+	if _, err := gitExec(dotmemDir, "commit", "-m", commitMsg); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
 	return nil
@@ -504,7 +547,7 @@ func cmdBrowseTUI(w io.Writer, typeFilter, projectFilter string, allProjects boo
 		title = projectFilter
 	}
 
-	p := tea.NewProgram(newBrowseModel(memories, title, dir))
+	p := tea.NewProgram(newBrowseModel(memories, title, dir), tea.WithOutput(w))
 	_, err = p.Run()
 	return err
 }
