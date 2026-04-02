@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestParseFrontmatter(t *testing.T) {
@@ -491,6 +493,113 @@ func TestCascadeMemoryIndexBulletOnly(t *testing.T) {
 	// Prose line should be preserved.
 	if !strings.Contains(out, "Some prose mentioning") {
 		t.Errorf("expected prose line to be preserved:\n%s", out)
+	}
+}
+
+func keyPress(char rune) tea.KeyPressMsg {
+	return tea.KeyPressMsg(tea.Key{Code: char, Text: string(char)})
+}
+
+func ctrlC() tea.KeyPressMsg {
+	return tea.KeyPressMsg(tea.Key{Code: 'c', Mod: tea.ModCtrl})
+}
+
+func enterKey() tea.KeyPressMsg {
+	return tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
+}
+
+func escKey() tea.KeyPressMsg {
+	return tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
+}
+
+func TestBrowseModelNavigation(t *testing.T) {
+	memories := []memoryFile{
+		{Project: "alpha", File: "feedback.md", Meta: memoryMeta{Name: "Test", Type: "feedback"}, Body: "Content."},
+		{Project: "beta", File: "notes.md", Meta: memoryMeta{Name: "Notes", Type: "user"}, Body: "Notes body."},
+	}
+
+	m := newBrowseModel(memories, "test", t.TempDir())
+	// Send a WindowSizeMsg so the model is ready.
+	model, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	bm := model.(browseModel)
+	if !bm.ready {
+		t.Fatal("expected model to be ready after WindowSizeMsg")
+	}
+	if bm.view != listView {
+		t.Fatal("expected initial view to be listView")
+	}
+
+	// Press enter to go to detail view.
+	model, _ = bm.Update(enterKey())
+	bm = model.(browseModel)
+	if bm.view != detailView {
+		t.Error("expected detail view after enter")
+	}
+
+	// Press esc to go back to list view.
+	model, _ = bm.Update(escKey())
+	bm = model.(browseModel)
+	if bm.view != listView {
+		t.Error("expected list view after esc")
+	}
+}
+
+func TestBrowseModelCtrlCFromDetailView(t *testing.T) {
+	memories := []memoryFile{
+		{Project: "alpha", File: "feedback.md", Meta: memoryMeta{Name: "Test", Type: "feedback"}, Body: "Content."},
+	}
+
+	m := newBrowseModel(memories, "test", t.TempDir())
+	model, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	bm := model.(browseModel)
+
+	// Enter detail view.
+	model, _ = bm.Update(enterKey())
+	bm = model.(browseModel)
+	if bm.view != detailView {
+		t.Fatal("expected detail view")
+	}
+
+	// ctrl+c should return tea.Quit.
+	_, cmd := bm.Update(ctrlC())
+	if cmd == nil {
+		t.Fatal("expected a command from ctrl+c")
+	}
+	// tea.Quit returns a tea.QuitMsg.
+	msg := cmd()
+	if _, ok := msg.(tea.QuitMsg); !ok {
+		t.Errorf("expected QuitMsg, got %T", msg)
+	}
+}
+
+func TestBrowseModelDeleteConfirmation(t *testing.T) {
+	memories := []memoryFile{
+		{Project: "alpha", File: "feedback.md", Meta: memoryMeta{Name: "Test", Type: "feedback"}, Body: "Content."},
+	}
+
+	m := newBrowseModel(memories, "test", t.TempDir())
+	model, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	bm := model.(browseModel)
+
+	// Enter detail view.
+	model, _ = bm.Update(enterKey())
+	bm = model.(browseModel)
+
+	// Press 'd' to start delete confirmation.
+	model, _ = bm.Update(keyPress('d'))
+	bm = model.(browseModel)
+	if !bm.confirming {
+		t.Error("expected confirming=true after 'd'")
+	}
+
+	// Press 'n' to cancel.
+	model, _ = bm.Update(keyPress('n'))
+	bm = model.(browseModel)
+	if bm.confirming {
+		t.Error("expected confirming=false after 'n'")
+	}
+	if bm.view != detailView {
+		t.Error("expected to stay in detail view after cancel")
 	}
 }
 

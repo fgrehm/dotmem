@@ -317,6 +317,8 @@ func (m browseModel) updateDetailKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch key {
+	case "ctrl+c":
+		return m, tea.Quit
 	case "esc", "backspace":
 		m.view = listView
 		m.confirming = false
