@@ -480,6 +480,7 @@ func commitMemoryChange(dotmemDir, project, file, msg string) error {
 
 	// Stage the memory file. Use git add -u when the file has been deleted
 	// so the removal is recorded instead of causing a pathspec error.
+	paths := []string{filePath}
 	if _, err := os.Stat(filepath.Join(dotmemDir, filePath)); os.IsNotExist(err) {
 		if _, err := gitExec(dotmemDir, "add", "-u", "--", filePath); err != nil {
 			return fmt.Errorf("git add -u: %w", err)
@@ -497,6 +498,7 @@ func commitMemoryChange(dotmemDir, project, file, msg string) error {
 		if _, err := gitExec(dotmemDir, "add", "--", indexPath); err != nil {
 			return fmt.Errorf("git add index: %w", err)
 		}
+		paths = append(paths, indexPath)
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("stat memory index: %w", err)
 	}
@@ -507,7 +509,8 @@ func commitMemoryChange(dotmemDir, project, file, msg string) error {
 	}
 
 	commitMsg := msg + ": " + project + "/" + file
-	if _, err := gitExec(dotmemDir, "commit", "-m", commitMsg); err != nil {
+	commitArgs := append([]string{"commit", "-m", commitMsg, "--"}, paths...)
+	if _, err := gitExec(dotmemDir, commitArgs...); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
 	return nil
