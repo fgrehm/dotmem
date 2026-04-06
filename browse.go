@@ -148,7 +148,7 @@ func newBrowseCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "browse",
-		Short: "Browse memories for the current project, grouped by type",
+		Short: "Browse memories for the current project",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validTypeFilter(typeFilter); err != nil {
@@ -177,7 +177,7 @@ func resolveProjectFilter(dotmemDir, projectFilter string, allProjects bool) (st
 	if projectFilter != "" {
 		normalized := normalizeSlug(projectFilter)
 		if err := validateSlug(normalized); err != nil {
-			return "", fmt.Errorf("invalid project slug %q: %w", projectFilter, err)
+			return "", err
 		}
 		info, err := os.Stat(filepath.Join(dotmemDir, normalized))
 		if err != nil {

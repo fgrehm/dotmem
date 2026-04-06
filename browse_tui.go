@@ -497,8 +497,12 @@ func commitMemoryChange(dotmemDir, project, file, msg string) error {
 	}
 
 	// Skip commit when nothing was staged (e.g. editor exited without changes).
-	diffArgs := append([]string{"diff", "--cached", "--quiet", "--"}, paths...)
-	if _, err := gitExec(dotmemDir, diffArgs...); err == nil {
+	diffArgs := append([]string{"diff", "--cached", "--name-only", "--"}, paths...)
+	diffOut, err := gitExec(dotmemDir, diffArgs...)
+	if err != nil {
+		return fmt.Errorf("git diff: %w", err)
+	}
+	if strings.TrimSpace(diffOut) == "" {
 		return nil
 	}
 
