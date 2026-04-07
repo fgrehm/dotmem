@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-07
+
 ### Added
 
 - `dotmem browse` -- interactive TUI to browse memories across all projects, grouped by type. Parses YAML frontmatter (name, description, type) from memory files. Supports `--type` and `--project` filters, `--plain` for non-interactive output. Detail view renders markdown via glamour. Default view scoped to the current project (auto-detected); `--all` to show all. Edit and delete from the detail view with auto-commit.
