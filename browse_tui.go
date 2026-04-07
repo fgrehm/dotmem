@@ -192,6 +192,7 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.view == detailView {
 			m.viewport.SetWidth(msg.Width)
 			m.viewport.SetHeight(msg.Height - 2)
+			m.viewport.SetContent(renderDetail(m.selected, m.width))
 		}
 		return m, nil
 
@@ -339,6 +340,8 @@ func (m browseModel) updateDetailKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if editor == "" {
 			editor = "vi"
 		}
+		// Split on whitespace (e.g. "code --wait"). Quote-aware parsing
+		// is intentionally skipped: this matches git's own EDITOR handling.
 		editorFields := strings.Fields(editor)
 		if len(editorFields) == 0 {
 			editorFields = []string{"vi"}
