@@ -41,23 +41,23 @@ var (
 	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F87171"))
 )
 
-// -- wrapping delegate --
+// -- delegate --
 
-type wrappingDelegate struct {
+type memoryDelegate struct {
 	list.DefaultDelegate
 }
 
-func newWrappingDelegate() wrappingDelegate {
+func newMemoryDelegate() memoryDelegate {
 	d := list.NewDefaultDelegate()
 	d.SetHeight(3)
 	d.SetSpacing(1)
-	return wrappingDelegate{DefaultDelegate: d}
+	return memoryDelegate{DefaultDelegate: d}
 }
 
-func (d wrappingDelegate) Height() int  { return d.DefaultDelegate.Height() }
-func (d wrappingDelegate) Spacing() int { return d.DefaultDelegate.Spacing() }
+func (d memoryDelegate) Height() int  { return d.DefaultDelegate.Height() }
+func (d memoryDelegate) Spacing() int { return d.DefaultDelegate.Spacing() }
 
-func (d wrappingDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+func (d memoryDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	di, ok := item.(list.DefaultItem)
 	if !ok {
 		return
@@ -166,7 +166,7 @@ func newBrowseModel(memories []memoryFile, title, dotmemDir string) browseModel 
 		items[i] = memoryItem{memory: m}
 	}
 
-	delegate := newWrappingDelegate()
+	delegate := newMemoryDelegate()
 	l := list.New(items, delegate, 0, 0)
 	l.Title = title
 	l.SetShowStatusBar(true)
@@ -244,6 +244,7 @@ func (m browseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.list.RemoveItem(msg.index)
+		m.confirming = false
 		m.view = listView
 		return m, nil
 
