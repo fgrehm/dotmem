@@ -39,20 +39,13 @@ func parseFrontmatter(content string) (memoryMeta, string) {
 }
 
 func collectMemories(dotmemDir, projectFilter string) ([]memoryFile, error) {
-	entries, err := os.ReadDir(dotmemDir)
+	slugs, err := projectSlugs(dotmemDir, projectFilter)
 	if err != nil {
 		return nil, err
 	}
 
 	var memories []memoryFile
-	for _, e := range entries {
-		if !e.IsDir() || e.Name() == ".git" {
-			continue
-		}
-		slug := e.Name()
-		if projectFilter != "" && slug != projectFilter {
-			continue
-		}
+	for _, slug := range slugs {
 		projectDir := filepath.Join(dotmemDir, slug)
 		files, err := readMemoryFiles(projectDir)
 		if err != nil {
@@ -72,6 +65,37 @@ func collectMemories(dotmemDir, projectFilter string) ([]memoryFile, error) {
 		}
 	}
 	return memories, nil
+}
+
+// projectSlugs returns the list of project slugs to scan. When projectFilter
+// is set, it returns just that slug (after verifying it's a directory) instead
+// of listing the entire dotmem directory.
+func projectSlugs(dotmemDir, projectFilter string) ([]string, error) {
+	if projectFilter != "" {
+		info, err := os.Stat(filepath.Join(dotmemDir, projectFilter))
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, nil
+			}
+			return nil, err
+		}
+		if !info.IsDir() {
+			return nil, nil
+		}
+		return []string{projectFilter}, nil
+	}
+
+	entries, err := os.ReadDir(dotmemDir)
+	if err != nil {
+		return nil, err
+	}
+	var slugs []string
+	for _, e := range entries {
+		if e.IsDir() && e.Name() != ".git" {
+			slugs = append(slugs, e.Name())
+		}
+	}
+	return slugs, nil
 }
 
 func filterMemories(memories []memoryFile, typeFilter string) []memoryFile {
@@ -161,7 +185,7 @@ func newBrowseCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&typeFilter, "type", "t", "", "filter by memory type (user, feedback, project, reference)")
+	cmd.Flags().StringVarP(&typeFilter, "type", "t", "", "filter by memory type (user, feedback, project, reference, untyped)")
 	cmd.Flags().StringVarP(&projectFilter, "project", "p", "", "filter by project slug")
 	cmd.Flags().BoolVarP(&allProjects, "all", "a", false, "show memories from all projects (default: current project only)")
 	cmd.Flags().BoolVar(&plain, "plain", false, "plain text output (no TUI)")
