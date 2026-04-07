@@ -12,7 +12,7 @@ When reviewing PRs, check for:
 
 - One file per command (`<command>.go`), thin cobra wrapper delegating to `cmdX()` function.
 - Tests call `cmdX()` directly, not through cobra.
-- No external dependencies beyond cobra. Use `encoding/json`, `os/exec`, `path/filepath` from stdlib.
+- Core commands: no external dependencies beyond cobra. Use `encoding/json`, `os/exec`, `path/filepath` from stdlib. Exception: the `browse` command intentionally uses TUI/rendering dependencies (Bubble Tea, Bubbles, Glamour, Lipgloss, frontmatter).
 - Use `io.Writer` parameter for output (not `fmt.Println`), so tests can capture output.
 - Error messages start lowercase, no trailing period.
 - Conventional commits, present tense, under 72 chars.

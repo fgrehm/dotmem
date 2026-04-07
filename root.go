@@ -30,6 +30,7 @@ single git repo with automatic versioning via Stop hooks.`,
 		newLogCmd(),
 		newPushCmd(),
 		newCdCmd(),
+		newBrowseCmd(),
 	)
 
 	return cmd
