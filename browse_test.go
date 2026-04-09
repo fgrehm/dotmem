@@ -89,19 +89,20 @@ func TestCollectMemories(t *testing.T) {
 	mustWriteFile(t, projA+"/feedback_tests.md", []byte("---\nname: Test safety\ndescription: Be careful\ntype: feedback\n---\n\nContent.\n"))
 	mustWriteFile(t, projA+"/project_release.md", []byte("---\nname: Release plan\ntype: project\n---\n\nRelease stuff.\n"))
 
-	// Project B: one file without frontmatter.
+	// Project B: one file without frontmatter + a MEMORY.md index.
 	projB := dotmem + "/beta"
 	mustMkdirAll(t, projB)
 	mustWriteFile(t, projB+"/.repo", []byte("git@github.com:user/beta.git"))
 	mustWriteFile(t, projB+"/notes.md", []byte("# Notes\n\nPlain markdown.\n"))
+	mustWriteFile(t, projB+"/MEMORY.md", []byte("# Memory\n\n- [notes](notes.md) -- plain notes\n"))
 
 	memories, err := collectMemories(dotmem, "")
 	if err != nil {
 		t.Fatalf("collectMemories: %v", err)
 	}
 
-	if got := len(memories); got != 3 {
-		t.Fatalf("got %d memories, want 3", got)
+	if got := len(memories); got != 4 {
+		t.Fatalf("got %d memories, want 4", got)
 	}
 
 	byFile := make(map[string]memoryFile)
@@ -128,6 +129,11 @@ func TestCollectMemories(t *testing.T) {
 	}
 	if notes.Meta.Type != "" {
 		t.Errorf("type = %q, want empty", notes.Meta.Type)
+	}
+
+	// MEMORY.md should appear in the listing.
+	if _, ok := byFile["beta/MEMORY.md"]; !ok {
+		t.Fatal("MEMORY.md should be included in browse listing")
 	}
 }
 

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `browse`: MEMORY.md now appears in the listing instead of being silently excluded.
+
 ## [0.3.0] - 2026-04-07
 
 ### Added
