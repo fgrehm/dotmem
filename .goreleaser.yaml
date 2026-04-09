@@ -24,5 +24,10 @@ archives:
 checksum:
   name_template: checksums.txt
 
-changelog:
-  disable: true
+release:
+  github:
+    owner: fgrehm
+    name: dotmem
+  draft: false
+  prerelease: auto
+  name_template: "v{{.Version}}"
