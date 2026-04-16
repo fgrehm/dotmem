@@ -2,6 +2,11 @@
 
 Centralize Claude Code memory files into a single git-tracked repo with automatic versioning.
 
+## Archived
+
+I have since moved on to https://gastownhall.github.io/beads/ instead of Claude Code memory files
+since beads is coding agent agnostic.
+
 ## Why
 
 Claude Code's [auto memory](https://code.claude.com/docs/en/memory#auto-memory) saves context
